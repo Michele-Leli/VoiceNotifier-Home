@@ -1,10 +1,23 @@
 workflows:
-  sample-workflow:
-    name: VoiceNotifier-Home
+  android-capacitor-workflow:
+    name: VoiceNotifier APK Build
+    max_build_duration: 60
+    environment:
+      node: latest
     scripts:
-      - name: Get dependencies
-        script: flutter packages pub get
-      - name: Build APK
-        script: flutter build apk --release
+      - name: Install dependencies
+        script: npm install
+      - name: Build web project
+        script: npm run build
+      - name: Install Capacitor Android
+        script: |
+          npm install @capacitor/android
+          npx cap add android
+      - name: Copy web assets to Android
+        script: npx cap copy android
+      - name: Build Android APK
+        script: |
+          cd android
+          ./gradlew assembleRelease
     artifacts:
-      - build/app/outputs/flutter-apk/*.apk
+      - android/app/build/outputs/apk/release/*.apk
