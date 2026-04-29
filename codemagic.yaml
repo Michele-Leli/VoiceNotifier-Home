@@ -1,5 +1,10 @@
 workflows:
-    sample-workflow:
-        name: VoiceNotifier-Home
-artifacts:
-  - build/app/outputs/flutter-apk/*.apk
+  sample-workflow:
+    name: VoiceNotifier-Home
+    scripts:
+      - name: Get dependencies
+        script: flutter packages pub get
+      - name: Build APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
