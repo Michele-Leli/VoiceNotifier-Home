@@ -1,0 +1,6 @@
+{
+  "name": "VoiceNotifier Home",
+  "description": "Bridge phone notifications to Google Home with customizable voice and app filters.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": []
+}
