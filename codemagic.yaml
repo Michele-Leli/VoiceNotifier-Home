@@ -1,3 +1,9 @@
+workflows:
+  android-capacitor-workflow:
+    name: VoiceNotifier APK Build
+    max_build_duration: 60
+    environment:
+      node: latest
 scripts:
   - name: Install dependencies and Build Web
     script: |
