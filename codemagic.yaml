@@ -1,3 +1,5 @@
 workflows:
     sample-workflow:
         name: VoiceNotifier-Home
+artifacts:
+  - build/app/outputs/flutter-apk/*.apk
