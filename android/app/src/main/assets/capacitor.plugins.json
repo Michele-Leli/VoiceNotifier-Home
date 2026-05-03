@@ -1,0 +1,6 @@
+[
+	{
+		"pkg": "capacitor-notifications-listener",
+		"classpath": "com.capacitor.notifications.listener.NotificationsListenerPlugin"
+	}
+]
