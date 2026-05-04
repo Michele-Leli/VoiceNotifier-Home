@@ -38,12 +38,7 @@
       }
     },
     "plugins": [
-      [
-        "react-native-android-notification-listener",
-        {
-          "notificationListenerServiceLabel": "VoxHome Notification Listener"
-        }
-      ]
+      "./plugins/withNotificationListener.cjs"
     ]
   }
 }

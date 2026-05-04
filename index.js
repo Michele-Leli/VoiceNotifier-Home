@@ -30,7 +30,7 @@ const headlessNotificationListener = async ({ notification }) => {
 
 // Registra l'ascoltatore di background
 AppRegistry.registerHeadlessTask(
-    'RNAndroidNotificationListenerHeadlessJsName',
+    'RNAndroidNotificationListenerHeadlessJs',
     () => headlessNotificationListener
 );
 

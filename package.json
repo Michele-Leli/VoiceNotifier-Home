@@ -15,6 +15,7 @@
     "build:apk": "eas build -p android --profile preview"
   },
   "dependencies": {
+    "@expo/config-plugins": "^55.0.8",
     "@expo/webpack-config": "^19.0.1",
     "@google/genai": "^1.29.0",
     "@tailwindcss/vite": "^4.1.14",
