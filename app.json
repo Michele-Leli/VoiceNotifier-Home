@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "VoxHome Bridge",
-    "slug": "voxhome-bridge",
+    "slug": "voicenotifier",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -22,7 +22,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#020617"
       },
-      "package": "com.miky.voxhome.bridge",
+      "package": "com.miky.voxhome.voicenotifier",
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "FOREGROUND_SERVICE",
@@ -34,7 +34,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": ""
+        "projectId": "e619cc5e-44af-407b-b92a-08b2f340ec9b"
       }
     },
     "plugins": [
