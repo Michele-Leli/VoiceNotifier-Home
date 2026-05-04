@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { NotificationsListener } from 'capacitor-notifications-listener';
+import { Capacitor } from '@capacitor/core';
 
 interface Notification {
   app: string;
@@ -1027,6 +1028,12 @@ export default function App() {
   // Native Notification Listener Setup
   useEffect(() => {
     const setupNativeListener = async () => {
+      // Guard for web platform
+      if (Capacitor.getPlatform() === 'web') {
+        console.log("Native notification listener is only available on Android/iOS devices.");
+        return;
+      }
+      
       try {
         const { value } = await NotificationsListener.isListening();
         setNativeListenerEnabled(value);
@@ -1076,12 +1083,18 @@ export default function App() {
   }, [processNotification, startListeningWindow]);
 
   const requestNativePermission = async () => {
+    if (Capacitor.getPlatform() === 'web') {
+      alert("L'accesso alle notifiche di sistema è disponibile solo nell'app Android installata.");
+      return;
+    }
     await NotificationsListener.requestPermission();
     // Usually navigates away, so we refresh status on window focus
   };
 
   useEffect(() => {
     const handleFocus = async () => {
+      if (Capacitor.getPlatform() === 'web') return;
+      
       try {
         const { value } = await NotificationsListener.isListening();
         setNativeListenerEnabled(value);
