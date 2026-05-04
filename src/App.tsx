@@ -29,8 +29,6 @@ import {
   Wifi
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { NotificationsListener } from 'capacitor-notifications-listener';
-import { Capacitor } from '@capacitor/core';
 
 interface Notification {
   app: string;
@@ -118,7 +116,6 @@ export default function App() {
   const [newAppInput, setNewAppInput] = useState("");
   const [socket, setSocket] = useState<Socket | null>(null);
   const [webhookUrl, setWebhookUrl] = useState("");
-  const [nativeListenerEnabled, setNativeListenerEnabled] = useState(false);
 
   const castSessionRef = useRef<any>(null);
   const recognitionRef = useRef<any>(null);
@@ -1025,88 +1022,6 @@ export default function App() {
     };
   }, []);
 
-  // Native Notification Listener Setup
-  useEffect(() => {
-    const setupNativeListener = async () => {
-      // Guard for web platform
-      if (Capacitor.getPlatform() === 'web') {
-        console.log("Native notification listener is only available on Android/iOS devices.");
-        return;
-      }
-      
-      try {
-        const { value } = await NotificationsListener.isListening();
-        setNativeListenerEnabled(value);
-        
-        if (value) {
-          console.log("Native listener is active, starting...");
-          await NotificationsListener.startListening({ cacheNotifications: true });
-          await NotificationsListener.restoreCachedNotifications();
-        }
-
-        NotificationsListener.addListener("notificationReceivedEvent", (notif: any) => {
-          console.log("Native notification received:", notif);
-          
-          const newNotif: Notification = {
-            app: notif.apptitle || notif.package || "App",
-            title: notif.title || "",
-            message: notif.text || "",
-            timestamp: notif.time || Date.now()
-          };
-          
-          // Use common logic to process
-          setNotifications(prev => {
-            if (prev.some(n => n.message === newNotif.message && Math.abs(n.timestamp - newNotif.timestamp) < 5000)) {
-              return prev;
-            }
-            return [newNotif, ...prev].slice(0, 50);
-          });
-          
-          setUnreadCount(prev => prev + 1);
-          processNotification(newNotif).catch(err => console.error("Native process error:", err));
-          
-          // Re-trigger mic window if configured
-          if (!isReadingActiveRef.current) {
-            startListeningWindow();
-          }
-        });
-      } catch (err) {
-        console.error("Error setting up native listener:", err);
-      }
-    };
-
-    setupNativeListener();
-    
-    return () => {
-      NotificationsListener.removeAllListeners();
-    };
-  }, [processNotification, startListeningWindow]);
-
-  const requestNativePermission = async () => {
-    if (Capacitor.getPlatform() === 'web') {
-      alert("L'accesso alle notifiche di sistema è disponibile solo nell'app Android installata.");
-      return;
-    }
-    await NotificationsListener.requestPermission();
-    // Usually navigates away, so we refresh status on window focus
-  };
-
-  useEffect(() => {
-    const handleFocus = async () => {
-      if (Capacitor.getPlatform() === 'web') return;
-      
-      try {
-        const { value } = await NotificationsListener.isListening();
-        setNativeListenerEnabled(value);
-        if (value) {
-          await NotificationsListener.startListening({ cacheNotifications: true });
-        }
-      } catch (e) {}
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
-
   const handleCast = () => {
     if (typeof window !== "undefined" && (window as any).cast && (window as any).cast.framework) {
       const castContext = (window as any).cast.framework.CastContext.getInstance();
@@ -1379,26 +1294,6 @@ export default function App() {
                         </div>
                         <p className={`text-[10px] font-bold text-center mt-1 uppercase tracking-widest ${isMicWindowActive ? "text-cyan-400" : "text-slate-500"}`}>
                           {isMicWindowActive ? "Parla ora..." : "Si attiva alla notifica"}
-                        </p>
-                      </div>
-
-                      <div className="p-5 rounded-2xl bg-slate-800/40 border border-slate-700/50 flex flex-col gap-2 relative overflow-hidden">
-                        <div className="flex items-center justify-center gap-3">
-                          <div className={`w-3 h-3 rounded-full ${nativeListenerEnabled ? "bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)]" : "bg-slate-600"}`}></div>
-                          <span className="text-sm font-bold text-white uppercase tracking-wider">
-                            Listener Nativo: {nativeListenerEnabled ? "Attivo" : "Non autorizzato"}
-                          </span>
-                        </div>
-                        {!nativeListenerEnabled && (
-                          <button 
-                            onClick={requestNativePermission}
-                            className="mt-2 text-[10px] bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 font-bold py-1 px-2 rounded-lg border border-cyan-500/20 transition-all uppercase tracking-widest"
-                          >
-                            Autorizza Accesso Notifiche
-                          </button>
-                        )}
-                        <p className="text-[10px] font-medium text-slate-500 text-center mt-1 uppercase tracking-widest leading-tight">
-                          Necessario su Android per leggere le notifiche di tutte le app
                         </p>
                       </div>
 
