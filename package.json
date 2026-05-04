@@ -12,7 +12,9 @@
     "lint": "tsc --noEmit",
     "expo:start": "expo start",
     "expo:android": "expo run:android",
-    "build:apk": "eas build -p android --profile preview"
+    "build:apk": "eas build -p android --profile preview",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/config-plugins": "~8.0.8",

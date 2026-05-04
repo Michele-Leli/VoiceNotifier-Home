@@ -3,7 +3,21 @@ const { withAndroidManifest } = require('@expo/config-plugins');
 const withNotificationListener = (config) => {
   return withAndroidManifest(config, async (config) => {
     const androidManifest = config.modResults;
-    const mainApplication = androidManifest.manifest.application[0];
+    const manifest = androidManifest.manifest;
+    const mainApplication = manifest.application[0];
+
+    // Add tools namespace
+    if (!manifest.$['xmlns:tools']) {
+      manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+    }
+
+    // Set allowBackup and tools:replace to avoid merge conflicts
+    mainApplication.$['android:allowBackup'] = 'false';
+    if (!mainApplication.$['tools:replace']) {
+      mainApplication.$['tools:replace'] = 'android:allowBackup';
+    } else if (!mainApplication.$['tools:replace'].includes('android:allowBackup')) {
+      mainApplication.$['tools:replace'] += ',android:allowBackup';
+    }
 
     // Ensure the services are registered
     if (!mainApplication.service) {
