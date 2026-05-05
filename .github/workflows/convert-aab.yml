@@ -28,9 +28,12 @@ jobs:
         run: |
           wget https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar -O bundletool.jar
 
-      - name: Download AAB from Expo
+
+      - name: Download AAB from Google Drive
         run: |
-          wget -U "Mozilla/5.0" "https://drive.google.com/file/d/1GbHM2Lc_--6so8QxzR5U0OiV-WF6Akeu/view?usp=sharing" -O app-release.aab
+          FILE_ID="1GbHM2Lc_--6so8QxzR5U0OiV-WF6Akeu"
+          # Scarica il file usando l'ID di Google Drive
+          curl -L "https://docs.google.com/uc?export=download&id=${FILE_ID}" -o app-release.aab
 
       - name: Convert AAB to Universal APK
         run: |
