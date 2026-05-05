@@ -32,10 +32,14 @@ jobs:
       - name: Download AAB from Google Drive
         run: |
           FILE_ID="1GbHM2Lc_--6so8QxzR5U0OiV-WF6Akeu"
-          # Ottiene il cookie di conferma e scarica il file reale
-          curl -c /tmp/cookies.txt "https://docs.google.com/uc?export=download&id=${FILE_ID}" > /tmp/confirm_page.html
-          CONFIRM=$(grep -o 'confirm=[^&" ]*' /tmp/confirm_page.html | sed 's/confirm=//')
-          curl -L -b /tmp/cookies.txt "https://docs.google.com/uc?export=download&id=${FILE_ID}&confirm=${CONFIRM}" -o app-release.aab
+          # 1. Ottieni il codice di conferma per i file grandi
+          CONFIRM=$(curl -sc /tmp/cookies.txt "https://docs.google.com/uc?export=download&id=${FILE_ID}" | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')
+          
+          # 2. Scarica il file reale usando il cookie e il token di conferma
+          curl -Lb /tmp/cookies.txt "https://docs.google.com/uc?export=download&id=${FILE_ID}&confirm=${CONFIRM}" -o app-release.aab
+          
+          # Verifica la dimensione (giusto per essere sicuri nel log)
+          ls -lh app-release.aab
 
       - name: Convert AAB to Universal APK
         run: |
