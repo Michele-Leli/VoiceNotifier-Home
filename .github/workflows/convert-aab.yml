@@ -31,7 +31,7 @@ jobs:
       - name: Download AAB from GitHub Release
         run: |
           # Incolla il link che hai appena copiato tra le virgolette
-          curl -L "https://telecomitalia-my.sharepoint.com/:u:/g/personal/11626381_telecomitalia_it/IQCyZfkgG5C5RLydHOro8Zc6AX3hZClmd-0bPceNVzBoH-k?e=6Nj9hC" -o app-release.aab
+          curl -L "https://www.dropbox.com/scl/fi/86klps6xevkgtu4ak3ins/app-release.aab?rlkey=1ui29jvd2tq25ax7g1k4mdbz1&st=9cbjqj4p&dl=0" -o app-release.aab
           
           # Verifica che sia 64MB
           ls -lh app-release.aab
