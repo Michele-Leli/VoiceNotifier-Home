@@ -1,0 +1,38 @@
+name: Convert AAB to APK
+on:
+  workflow_dispatch: # Permette di avviarlo manualmente con un tasto
+
+jobs:
+  convert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Download Bundletool
+        run: |
+          wget https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar -O bundletool.jar
+
+      - name: Convert AAB to Universal APK
+        run: |
+          # Sostituisci "il_tuo_file.aab" con il percorso reale del tuo file nel repo
+          java -jar bundletool.jar build-apks \
+            --bundle=android/app/build/outputs/bundle/release/app-release.aab \
+            --output=app.apks \
+            --mode=universal
+
+      - name: Extract APK
+        run: |
+          unzip app.apks -d extracted_apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-apk
+          path: extracted_apk/universal.apk
