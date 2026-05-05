@@ -35,19 +35,24 @@ jobs:
 
       - name: Build Android APK
         run: |
-          # Pulizia radicale
+          # 1. Pulisce tutto
           rm -rf android
           
-          # Rigenerazione file nativi
+          # 2. Esporta il bundle JS (fondamentale per non avere l'errore rosso)
+          npx expo export --platform android
+          
+          # 3. Prebuild
           npx expo prebuild --platform android --no-install
           
-          # Compilazione
+          # 4. Compila in modalità RELEASE (mette il codice dentro l'APK)
           chmod +x android/gradlew
           cd android
-          ./gradlew assembleDebug --no-daemon
+          # Usiamo assembleRelease per impacchettare tutto il codice offline
+          ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: app-final-funzionante
+          # Nota: il percorso cambia in 'release'
+          path: android/app/build/outputs/apk/release/app-release.apk
