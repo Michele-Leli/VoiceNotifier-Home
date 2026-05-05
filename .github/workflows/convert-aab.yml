@@ -31,7 +31,7 @@ jobs:
       - name: Download AAB from GitHub Release
         run: |
           # Incolla il link che hai appena copiato tra le virgolette
-          curl -L "https://github.com/Michele-Leli/VoiceNotifier-Home/releases/download/v1/app-release.aab" -o app-release.aab
+          curl -L "https://telecomitalia-my.sharepoint.com/:u:/g/personal/11626381_telecomitalia_it/IQCyZfkgG5C5RLydHOro8Zc6AX3hZClmd-0bPceNVzBoH-k?e=6Nj9hC" -o app-release.aab
           
           # Verifica che sia 64MB
           ls -lh app-release.aab
