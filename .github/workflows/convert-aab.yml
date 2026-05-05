@@ -27,14 +27,21 @@ jobs:
 
       - name: Convert AAB to Universal APK
         run: |
-          # Pulizia precauzionale
           rm -f app.apks
           rm -rf extracted_apk
           
+          # Creiamo una chiave di debug al volo per firmare l'APK
+          keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+          # Usiamo la chiave per firmare l'output di bundletool
           java -jar bundletool.jar build-apks \
             --bundle=app-release.aab \
             --output=app.apks \
-            --mode=universal
+            --mode=universal \
+            --ks=debug.keystore \
+            --ks-pass=pass:android \
+            --ks-key-alias=androiddebugkey \
+            --key-pass=pass:android
 
       - name: Extract APK
         run: |
@@ -43,5 +50,5 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: universal-apk-final
+          name: universal-apk-signed
           path: extracted_apk/universal.apk
