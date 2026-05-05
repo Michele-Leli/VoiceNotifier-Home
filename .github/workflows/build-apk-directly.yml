@@ -24,33 +24,20 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          npm install @expo/metro-runtime
-
-      - name: Overwrite app.json (Force Android only)
-        run: |
-          # Questo comando sovrascrive il tuo app.json con uno minimale
-          # Sostituisci "IlTuoProgetto" con il nome reale della tua app se vuoi
-          echo '{
-            "expo": {
-              "name": "App-Build",
-              "slug": "app-build",
-              "version": "1.0.0",
-              "platforms": ["android"],
-              "android": {
-                "package": "com.manual.build"
-              }
-            }
-          }' > app.json
-          echo "Nuovo app.json creato:"
-          cat app.json
-
+          # Questi due risolvono i problemi di Gradle che vedi nei log
+          npm install expo-modules-autolinking @expo/config-plugins
+          
       - name: Build Android APK
         run: |
-          # Ora expo export non troverà traccia di "web"
-          npx expo export --platform android
-          npx expo prebuild --platform android --no-install
+          # 1. Pulizia profonda per evitare conflitti di cache
+          npx expo prebuild --platform android --clean
+          
+          # 2. Rendi eseguibile e compila
           chmod +x android/gradlew
-          cd android && ./gradlew assembleDebug
+          cd android
+          
+          # Usiamo --no-daemon per evitare blocchi di memoria su GitHub Actions
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
