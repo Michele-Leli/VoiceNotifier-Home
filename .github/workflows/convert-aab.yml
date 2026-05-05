@@ -30,7 +30,7 @@ jobs:
 
       - name: Download AAB from Expo
         run: |
-          wget "https://expo.dev/artifacts/eas/hY1ieD3VcsB2PNFZiDaTSh.aab" -O app-release.aab
+          wget -U "Mozilla/5.0" "https://expo.dev/artifacts/eas/hY1ieD3VcsB2PNFZiDaTSh.aab" -O app-release.aab
 
       - name: Convert AAB to Universal APK
         run: |
