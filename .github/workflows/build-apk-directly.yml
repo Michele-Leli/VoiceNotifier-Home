@@ -24,19 +24,20 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          # Questi due risolvono i problemi di Gradle che vedi nei log
-          npm install expo-modules-autolinking @expo/config-plugins
+          # Questo comando allinea TUTTE le versioni dei pacchetti all'SDK 51
+          npx expo install --check
           
       - name: Build Android APK
         run: |
-          # 1. Pulizia profonda per evitare conflitti di cache
-          npx expo prebuild --platform android --clean
+          # 1. Rimuoviamo la cartella android se esiste per evitare conflitti sporchi
+          rm -rf android
           
-          # 2. Rendi eseguibile e compila
+          # 2. Prebuild pulito
+          npx expo prebuild --platform android --no-install
+          
+          # 3. Permessi e compilazione
           chmod +x android/gradlew
           cd android
-          
-          # Usiamo --no-daemon per evitare blocchi di memoria su GitHub Actions
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
