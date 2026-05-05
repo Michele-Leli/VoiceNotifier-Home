@@ -15,15 +15,15 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Download Bundletool
+      - name: Download AAB from Expo
         run: |
-          wget https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar -O bundletool.jar
+          # Incolla il link tra le virgolette
+          wget "https://expo.dev/artifacts/eas/hY1iEd3VcsB2PNFZiDaTSh.aab" -O app-release.aab
 
       - name: Convert AAB to Universal APK
         run: |
-          # Sostituisci "il_tuo_file.aab" con il percorso reale del tuo file nel repo
           java -jar bundletool.jar build-apks \
-            --bundle=android/app/build/outputs/bundle/release/app-release.aab \
+            --bundle=app-release.aab \
             --output=app.apks \
             --mode=universal
 
