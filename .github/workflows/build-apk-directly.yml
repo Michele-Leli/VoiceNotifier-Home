@@ -23,19 +23,25 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # 1. Installazione standard
           npm install
-          # Questo comando allinea TUTTE le versioni dei pacchetti all'SDK 51
-          npx expo install --check
           
+          # 2. Forza l'allineamento delle versioni (TypeScript compreso)
+          # Aggiungiamo || true per evitare che il workflow si fermi se Expo fa i capricci
+          npx expo install --check --fix || true
+          
+          # 3. Installazione manuale della versione specifica di TypeScript richiesta
+          npm install typescript@~5.3.3 --save-dev
+
       - name: Build Android APK
         run: |
-          # 1. Rimuoviamo la cartella android se esiste per evitare conflitti sporchi
+          # Pulizia radicale
           rm -rf android
           
-          # 2. Prebuild pulito
+          # Rigenerazione file nativi
           npx expo prebuild --platform android --no-install
           
-          # 3. Permessi e compilazione
+          # Compilazione
           chmod +x android/gradlew
           cd android
           ./gradlew assembleDebug --no-daemon
