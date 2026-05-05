@@ -24,30 +24,31 @@ jobs:
       - name: Install dependencies
         run: |
           npm install
-          # Installiamo comunque la runtime anche se la cancelleremo, per evitare ogni errore
           npm install @expo/metro-runtime
 
-      - name: Fix Expo Config (Remove Web)
+      - name: Overwrite app.json (Force Android only)
         run: |
-          # Questo comando cerca "web" dentro app.json e lo elimina
-          sed -i 's/"web",//g' app.json || true
-          sed -i 's/,"web"//g' app.json || true
-          sed -i 's/"web"//g' app.json || true
-          # Rimuove anche eventuali virgole doppie rimaste dopo la cancellazione
-          sed -i 's/\[,/\[/g' app.json || true
-          sed -i 's/,,/,/g' app.json || true
-          echo "Configurazione app.json pulita:"
+          # Questo comando sovrascrive il tuo app.json con uno minimale
+          # Sostituisci "IlTuoProgetto" con il nome reale della tua app se vuoi
+          echo '{
+            "expo": {
+              "name": "App-Build",
+              "slug": "app-build",
+              "version": "1.0.0",
+              "platforms": ["android"],
+              "android": {
+                "package": "com.manual.build"
+              }
+            }
+          }' > app.json
+          echo "Nuovo app.json creato:"
           cat app.json
 
       - name: Build Android APK
         run: |
-          # Esporta solo per Android
+          # Ora expo export non troverà traccia di "web"
           npx expo export --platform android
-          
-          # Genera la cartella nativa
           npx expo prebuild --platform android --no-install
-          
-          # Permessi e compilazione
           chmod +x android/gradlew
           cd android && ./gradlew assembleDebug
 
@@ -55,5 +56,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          # Percorso corretto per la versione debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
