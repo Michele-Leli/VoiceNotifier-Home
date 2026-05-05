@@ -38,6 +38,7 @@ jobs:
             --bundle=app-release.aab \
             --output=app.apks \
             --mode=universal \
+            --local-testing \
             --ks=debug.keystore \
             --ks-pass=pass:android \
             --ks-key-alias=androiddebugkey \
