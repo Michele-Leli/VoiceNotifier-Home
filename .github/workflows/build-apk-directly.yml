@@ -21,17 +21,25 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
-      - name: Install dependencies
+- name: Install dependencies
         run: |
           npm install
-          # Installiamo la dipendenza web che Expo richiede per non bloccarsi
+          # Installiamo comunque questa per sicurezza, evita blocchi improvvisi
           npm install @expo/metro-runtime
 
-      # Questo è lo step magico: compila l'APK localmente sulla macchina GitHub
       - name: Build Android APK
         run: |
+          # 1. Rimuove forzatamente "web" dalle piattaforme in app.json se presente
+          sed -i 's/"web",//g' app.json || true
+          sed -i 's/,"web"//g' app.json || true
+          
+          # 2. Esporta solo per Android
           npx expo export --platform android
+          
+          # 3. Genera i file nativi
           npx expo prebuild --platform android --no-install
+          
+          # 4. Rendi eseguibile Gradle e compila
           chmod +x android/gradlew
           cd android && ./gradlew assembleDebug
 
@@ -39,4 +47,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
+          # Assicurati che il percorso sia /debug/ e non /release/
           path: android/app/build/outputs/apk/debug/app-debug.apk
