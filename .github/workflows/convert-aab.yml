@@ -28,17 +28,12 @@ jobs:
         run: |
           wget https://github.com/google/bundletool/releases/download/1.17.0/bundletool-all-1.17.0.jar -O bundletool.jar
 
-
-      - name: Download AAB from Google Drive
+      - name: Download AAB from GitHub Release
         run: |
-          FILE_ID="1GbHM2Lc_--6so8QxzR5U0OiV-WF6Akeu"
-          # 1. Ottieni il codice di conferma per i file grandi
-          CONFIRM=$(curl -sc /tmp/cookies.txt "https://docs.google.com/uc?export=download&id=${FILE_ID}" | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')
+          # Incolla il link che hai appena copiato tra le virgolette
+          curl -L "https://github.com/Michele-Leli/VoiceNotifier-Home/releases/download/v1/app-release.aab" -o app-release.aab
           
-          # 2. Scarica il file reale usando il cookie e il token di conferma
-          curl -Lb /tmp/cookies.txt "https://docs.google.com/uc?export=download&id=${FILE_ID}&confirm=${CONFIRM}" -o app-release.aab
-          
-          # Verifica la dimensione (giusto per essere sicuri nel log)
+          # Verifica che sia 64MB
           ls -lh app-release.aab
 
       - name: Convert AAB to Universal APK
