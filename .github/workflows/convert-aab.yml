@@ -1,20 +1,11 @@
 name: Convert AAB to APK
 on:
-  workflow_dispatch: # Permette di avviarlo manualmente con un tasto
+  workflow_dispatch:
 
 jobs:
   convert:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -30,16 +21,15 @@ jobs:
 
       - name: Download AAB from Dropbox
         run: |
-          # Cambiato dl=0 in dl=1 per il download diretto
+          # Download diretto forzato con dl=1
           curl -L "https://www.dropbox.com/scl/fi/86klps6xevkgtu4ak3ins/app-release.aab?rlkey=1ui29jvd2tq25ax7g1k4mdbz1&st=9cbjqj4p&dl=1" -o app-release.aab
-          
-          # Verifica dimensione
           ls -lh app-release.aab
 
       - name: Convert AAB to Universal APK
         run: |
-          # Forza la cancellazione di file vecchi per evitare l'errore "File already exists"
+          # Pulizia precauzionale
           rm -f app.apks
+          rm -rf extracted_apk
           
           java -jar bundletool.jar build-apks \
             --bundle=app-release.aab \
@@ -53,11 +43,5 @@ jobs:
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: universal-apk
-          path: extracted_apk/universal.apk
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: universal-apk
+          name: universal-apk-final
           path: extracted_apk/universal.apk
