@@ -43,12 +43,12 @@ jobs:
           
           java -jar bundletool.jar build-apks \
             --bundle=app-release.aab \
-            --output=app.apks \
+            --output=app_vox.apks \
             --mode=universal
 
       - name: Extract APK
         run: |
-          unzip app.apks -d extracted_apk
+          unzip app_vox.apks -d extracted_apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
