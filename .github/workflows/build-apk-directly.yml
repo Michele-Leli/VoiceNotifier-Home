@@ -22,25 +22,21 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
-
-      - name: Install Expo CLI
-        run: npm install -g expo-cli
+        run: |
+          npm install
+          # Installiamo la dipendenza web che Expo richiede per non bloccarsi
+          npm install @expo/metro-runtime
 
       # Questo è lo step magico: compila l'APK localmente sulla macchina GitHub
-      - name: Build Android Release
+      - name: Build Android APK
         run: |
-          # Esporta solo i file necessari per Android
           npx expo export --platform android
-          
-          # Genera la cartella 'android' se non è presente nel repo
-          npx expo prebuild --platform android
-          
-          # Entra nella cartella e compila l'APK
+          npx expo prebuild --platform android --no-install
+          chmod +x android/gradlew
           cd android && ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: manual-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+          name: app-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
