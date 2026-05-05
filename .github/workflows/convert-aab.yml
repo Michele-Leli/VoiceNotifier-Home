@@ -43,34 +43,18 @@ jobs:
           
           java -jar bundletool.jar build-apks \
             --bundle=app-release.aab \
-            --output=app_vox.apks \
-            --mode=universal
-
-      - name: Extract APK
-        run: |
-          unzip app_vox.apks -d extracted_apk
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: universal-apk
-          path: extracted_apk/universal.apk
-          
-      - name: Download AAB from Expo
-        run: |
-          # Incolla il link tra le virgolette
-          wget "https://expo.dev/artifacts/eas/hY1iEd3VcsB2PNFZiDaTSh.aab" -O app-release.aab
-
-      - name: Convert AAB to Universal APK
-        run: |
-          java -jar bundletool.jar build-apks \
-            --bundle=app-release.aab \
             --output=app.apks \
             --mode=universal
 
       - name: Extract APK
         run: |
           unzip app.apks -d extracted_apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: universal-apk
+          path: extracted_apk/universal.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
