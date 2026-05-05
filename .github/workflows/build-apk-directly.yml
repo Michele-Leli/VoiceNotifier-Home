@@ -30,9 +30,13 @@ jobs:
       # Questo è lo step magico: compila l'APK localmente sulla macchina GitHub
       - name: Build Android Release
         run: |
-          # Esporta solo per la piattaforma android
+          # Esporta solo i file necessari per Android
           npx expo export --platform android
           
+          # Genera la cartella 'android' se non è presente nel repo
+          npx expo prebuild --platform android
+          
+          # Entra nella cartella e compila l'APK
           cd android && ./gradlew assembleDebug
 
       - name: Upload APK
