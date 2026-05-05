@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "platforms": ["android", "ios"],
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -29,9 +30,6 @@
         "FOREGROUND_SERVICE",
         "WAKE_LOCK"
       ]
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
     },
     "extra": {
       "eas": {
