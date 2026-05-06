@@ -1,0 +1,12 @@
+name: Fix Git Index
+on: workflow_dispatch
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git update-index --assume-unchanged assets/adaptive-icon.png
+          git update-index --assume-unchanged assets/icon.png
+          # Aggiungi qui tutti i file che AI Studio continua a voler modificare
+          echo "Indice aggiornato!"
