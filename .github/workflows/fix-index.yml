@@ -1,28 +1,33 @@
 name: Fix Git Index
 on: workflow_dispatch
 
+permissions:
+  contents: write # Permette all'Action di fare il push delle modifiche all'indice
+
 jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Scarica tutta la cronologia per sicurezza
+          fetch-depth: 0
 
       - name: Restore and Lock Files
         run: |
-          # 1. Forza l'aggiunta dei file anche se sono nel .gitignore
+          # 1. Forza l'aggiunta delle icone
           git add -f assets/*.png
-          git add -f plugins/*.jar || true 
           
-          # 2. Applica il blocco "skip-worktree"
-          # Usiamo -f anche qui per sicurezza
-          git ls-files -z assets/*.png | xargs -0 git update-index --skip-worktree
+          # 2. Cerca e aggiungi i file .jar ovunque siano (evita l'errore pathspec)
+          find . -name "*.jar" -exec git add -f {} + || true
           
-          # 3. Configura l'utente
-          git config --global user.name "GitHub Action"
-          git config --global user.email "action@github.com"
+          # 3. Applica lo skip-worktree per ignorare le modifiche locali di AI Studio
+          git ls-files -z assets/*.png | xargs -0 git update-index --skip-worktree || true
           
-          # 4. Salva e Pusha
-          git commit -m "fix: forzato ripristino asset e blocco skip-worktree" || echo "Nessuna modifica necessaria"
-          git push
+          # 4. Configura l'utente
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # 5. Commit e Push
+          # Usiamo --allow-empty perché l'aggiornamento dell'indice potrebbe non generare file modificati
+          git commit --allow-empty -m "fix: forzato ripristino asset e blocco skip-worktree"
+          git push origin main
