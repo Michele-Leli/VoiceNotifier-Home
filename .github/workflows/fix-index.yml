@@ -1,12 +1,29 @@
 name: Fix Git Index
 on: workflow_dispatch
+
 jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          git update-index --assume-unchanged assets/adaptive-icon.png
-          git update-index --assume-unchanged assets/icon.png
-          # Aggiungi qui tutti i file che AI Studio continua a voler modificare
-          echo "Indice aggiornato!"
+        with:
+          fetch-depth: 0 # Scarica tutta la cronologia per sicurezza
+
+      - name: Restore and Lock Files
+        run: |
+          # 1. Riporta i file nello stato "tracciato" (toglie il 'Deleted' da AI Studio)
+          git add assets/*.png
+          git add plugins/*.jar || true 
+          
+          # 2. Applica il blocco "skip-worktree"
+          # Questo dice a Git: "Tieni il file sul server, ma ignora se AI Studio lo modifica localmente"
+          # È più potente di assume-unchanged e perfetto per AI Studio.
+          git ls-files -z assets/*.png | xargs -0 git update-index --skip-worktree
+          
+          # 3. Configura l'utente per il commit di riparazione
+          git config --global user.name "GitHub Action"
+          git config --global user.email "action@github.com"
+          
+          # 4. Salva lo stato dell'indice
+          git commit -m "fix: ripristino tracciamento asset e blocco modifiche locali" || echo "Nessuna modifica necessaria"
+          git push
