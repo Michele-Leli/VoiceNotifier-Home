@@ -1023,6 +1023,17 @@ export default function App() {
   }, []);
 
   const handleCast = () => {
+    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    
+    // Se siamo nell'app mobile, usiamo il bridge nativo
+    if (isInApp) {
+      if ((window as any).ReactNativeWebView) {
+        console.log("Cast: Richiedo picker nativo via WebView");
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'SHOW_CAST_PICKER' }));
+        return;
+      }
+    }
+
     if (typeof window !== "undefined" && (window as any).cast && (window as any).cast.framework) {
       const castContext = (window as any).cast.framework.CastContext.getInstance();
       try {

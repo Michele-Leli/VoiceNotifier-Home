@@ -37,7 +37,13 @@
       }
     },
     "plugins": [
-      "./plugins/withNotificationListener.cjs"
+      "./plugins/withNotificationListener.cjs",
+      [
+        "react-native-google-cast",
+        {
+          "receiverAppId": "CC1AD845"
+        }
+      ]
     ]
   }
 }

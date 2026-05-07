@@ -3,6 +3,7 @@ import { StyleSheet, View, SafeAreaView, StatusBar, AppState, Platform, Text, To
 import { WebView } from 'react-native-webview';
 import RNAndroidNotificationListener, { RNAndroidNotificationListenerHeadlessJsName } from 'react-native-android-notification-listener';
 import * as Speech from 'expo-speech';
+import GoogleCast, { CastButton } from 'react-native-google-cast';
 
 // L'URL del tuo server (quello che vedi nel browser)
 const APP_URL = 'https://ais-dev-jfh3uddrk4c54zlzxxaaff-393424312334.europe-west2.run.app';
@@ -34,8 +35,17 @@ export default function App() {
 
   // Funzione che riceve i messaggi dal WebView
   const onMessage = (event) => {
-    const data = JSON.parse(event.nativeEvent.data);
-    console.log('Messaggio dal Web:', data);
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      console.log('Messaggio dal Web:', data);
+      
+      if (data.type === 'SHOW_CAST_PICKER') {
+        console.log('Attivazione Cast Picker Nativo...');
+        GoogleCast.showCastDialog();
+      }
+    } catch (e) {
+      console.error('Errore parsing messaggio Web:', e);
+    }
   };
 
   return (
@@ -61,6 +71,11 @@ export default function App() {
         allowsFullscreenVideo={true}
         userAgent="VoxHomeBridgeExpo"
       />
+      
+      {/* Il CastButton deve essere presente nell'albero per far funzionare showCastDialog su Android, lo nascondiamo */}
+      <View style={{ width: 0, height: 0, opacity: 0, position: 'absolute' }}>
+        <CastButton style={{ width: 24, height: 24 }} />
+      </View>
     </SafeAreaView>
   );
 }
