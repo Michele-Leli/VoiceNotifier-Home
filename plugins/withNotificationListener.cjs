@@ -38,7 +38,8 @@ const withNotificationListener = (config) => {
           'android:name': 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListener',
           'android:permission': 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
           'android:exported': 'true',
-          'android:label': 'VoxHome Notification Listener'
+          'android:label': 'VoxHome Notification Listener',
+          'android:foregroundServiceType': 'specialUse'
         },
         'intent-filter': [
           {

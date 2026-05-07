@@ -28,31 +28,27 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # 1. Installazione standard
           npm install
-          
-          # 2. Forza l'allineamento delle versioni (TypeScript compreso)
-          # Aggiungiamo || true per evitare che il workflow si fermi se Expo fa i capricci
-          npx expo install --check --fix || true
-          
-          # 3. Installazione manuale della versione specifica di TypeScript richiesta
-          npm install typescript@~5.5.0 --save-dev
+          # Assicuriamoci che la versione di TypeScript sia quella corretta per Expo 51
+          npm install --save-dev typescript@~5.3.3
 
       - name: Build Android APK
+        env:
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
         run: |
-          # 1. Pulisce tutto
+          # 1. Pulisce la cartella android se esiste (partiamo da zero)
           rm -rf android
           
-          # 2. Esporta il bundle JS (fondamentale per non avere l'errore rosso)
-          npx expo export --platform android
-          
-          # 3. Prebuild
+          # 2. Prebuild: genera la cartella nativa android
           npx expo prebuild --platform android --no-install
           
-          # 4. Compila in modalità RELEASE (mette il codice dentro l'APK)
+          # 3. Forza la generazione del bundle offline (evita l'errore rosso all'avvio)
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+          
+          # 4. Compila in modalità RELEASE
           chmod +x android/gradlew
           cd android
-          # Usiamo assembleRelease per impacchettare tutto il codice offline
           ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK
