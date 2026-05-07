@@ -32,24 +32,36 @@ jobs:
         env:
           CI: 1
         run: |
-          # 1. Configurazione Git
+          # 1. Setup Git e Asset (come prima)
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
-          
-          # 2. RECUPERO ASSET (PNG e JAR) - FONDAMENTALE PRIMA DEL PREBUILD
           git fetch origin vault-assets
-          # Checkout esplicito: prendiamo tutto quello che c'è in assets e i jar necessari
-          git checkout origin/vault-assets -- "assets/*.png" "**/*.jar" || echo "Attenzione: Alcuni asset non trovati"
+          git checkout origin/vault-assets -- "assets/*.png" "**/*.jar" || echo "Asset non trovati"
 
-          # 3. Rigenerazione (Prebuild)
-          # Ora che le immagini ci sono, Expo non andrà in crash
+          # 2. Prebuild
           npx expo prebuild --platform android --no-install
 
-          # 4. Compilazione
+          # 3. FORZATURA ESTREMA dei flag di compilazione
           cd android
+          
+          # Creiamo/Modifichiamo un file gradle.properties per forzare i flag globali
+          echo "kotlin.code.style=official" >> gradle.properties
+          # Questo flag è quello che risolve il tuo errore specifico:
+          echo "kotlin.incremental=false" >> gradle.properties
+          
+          # Sovrascriviamo la versione di Kotlin in ogni modo possibile
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle
+          sed -i 's/android.kotlinVersion=.*/android.kotlinVersion=2.0.0/' gradle.properties
+
+          # 4. Compilazione con flag di soppressione errori metadata
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon
+          ./gradlew assembleRelease \
+            -Pandroid.signingConfig.release=debug \
+            -PkotlinVersion=2.0.0 \
+            -Pkotlin.compiler.execution.strategy="out-process" \
+            -Dkotlin.metadata.version.check=false \
+            --no-daemon
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
