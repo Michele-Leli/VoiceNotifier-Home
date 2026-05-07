@@ -36,26 +36,26 @@ jobs:
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
           NODE_OPTIONS: "--max-old-space-size=4096"
-          CI: 1  # Questo sostituisce --non-interactive come suggerito dal tuo log
+          CI: 1
         run: |
-          # 1. Rigenerazione (Expo 51)
+          # 1. Rigenerazione cartella nativa
           npx expo prebuild --platform android --no-install
 
-          # 2. Ripristino icone e jar (fondamentale farlo DOPO il prebuild)
+          # 2. Ripristino icone e jar dal Vault
           git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati"
 
-          # 3. Entriamo nella cartella android per i comandi successivi
+          # 3. FIX VERSIONI KOTLIN (Entriamo nella cartella android)
           cd android
-
-          # 4. Forziamo la versione di Kotlin a 2.0.0 nel file build.gradle corretto
-          # Usiamo 'find' per essere sicuri di beccare il file giusto
+          
+          # Cerchiamo di sovrascrivere la variabile kotlinVersion ovunque sia definita
           sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle
           sed -i 's/kotlin_version = .*/kotlin_version = "2.0.0"/' build.gradle
-
-          # 5. Permessi e Compilazione
+          
+          # 4. Permessi e Compilazione
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon --stacktrace
+          # Passiamo la versione anche come parametro diretto per sicurezza
+          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug -PkotlinVersion=2.0.0 --no-daemon --stacktrace
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
