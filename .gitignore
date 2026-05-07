@@ -6,3 +6,14 @@ coverage/
 *.log
 .env*
 !.env.example
+
+.expo/
+.turbo/
+.vercel/
+**/android/build/
+**/android/app/build/
+**/ios/build/
+*.pyc
+*.pyo
+__pycache__/
+
