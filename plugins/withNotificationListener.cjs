@@ -16,18 +16,17 @@ const withNotificationListener = (config) => {
       }
     }
 
-    // Force Kotlin version for compatibility
-    const kotlinVersionTarget = '2.0.0';
-    
-    if (contents.includes('kotlinVersion =')) {
-      // Se esiste già, la sostituiamo
-      contents = contents.replace(/kotlinVersion\s*=\s*".*"/g, `kotlinVersion = "${kotlinVersionTarget}"`);
-      contents = contents.replace(/kotlinVersion\s*=\s*'.*'/g, `kotlinVersion = "${kotlinVersionTarget}"`);
+    // Force Kotlin version for compatibility with newer Google libraries
+    const kotlinVersion = "2.0.21";
+    if (contents.includes('kotlinVersion')) {
+      contents = contents.replace(/kotlinVersion\s*=\s*["'].*["']/, `kotlinVersion = "${kotlinVersion}"`);
     } else {
-      // Se non esiste (improbabile in Expo), la aggiungiamo nel blocco ext
       const extBlockRegex = /ext\s*\{/;
       if (extBlockRegex.test(contents)) {
-        contents = contents.replace(extBlockRegex, `ext {\n        kotlinVersion = "${kotlinVersionTarget}"`);
+        contents = contents.replace(
+          extBlockRegex,
+          `ext {\n        kotlinVersion = "${kotlinVersion}"`
+        );
       }
     }
 

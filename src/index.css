@@ -7,7 +7,8 @@
   --color-glass: rgba(15, 23, 42, 0.6);
   --color-glass-border: rgba(51, 65, 85, 0.5);
   
-  --shadow-glow-cyan: 0 0 20px rgba(34, 211, 238, 0.15);
+  --shadow-glow-cyan: 0 0 15px rgba(34, 211, 238, 0.25);
+  --shadow-glow-cyan-strong: 0 0 25px rgba(34, 211, 238, 0.5);
   --shadow-glow-indigo: 0 0 20px rgba(99, 102, 241, 0.15);
 }
 
@@ -20,6 +21,10 @@
 
   .glow-cyan {
     box-shadow: var(--shadow-glow-cyan);
+  }
+
+  .glow-cyan-strong {
+    box-shadow: var(--shadow-glow-cyan-strong);
   }
 
   .glow-indigo {

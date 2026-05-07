@@ -301,11 +301,33 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem("voiceNotifier_active", isReadingActive.toString());
+
+    // Sincronizza lo stato con la parte nativa Android
+    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    if (isInApp && (window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ 
+        type: 'SET_READING_STATE', 
+        enabled: isReadingActive 
+      }));
+    }
+
     if (isReadingActive) {
       // Force a speech priming on activation to help mobile browsers keep the engine warm
       speakLocally("Voce attiva").catch(() => {});
     }
   }, [isReadingActive]);
+
+  // Richiesta stati iniziali all'avvio (Handshake con Native)
+  useEffect(() => {
+    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    if (isInApp && (window as any).ReactNativeWebView) {
+      console.log("App: Handshake con Native...");
+      // Piccola pausa per caricamento bridge
+      setTimeout(() => {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'GET_STATES' }));
+      }, 500);
+    }
+  }, []);
 
   useEffect(() => {
     setWebhookUrl(`${window.location.origin}/api/webhook`);
@@ -395,6 +417,19 @@ export default function App() {
 
   const speakLocally = (text: string): Promise<void> => {
     return new Promise((resolve) => {
+      const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+      
+      if (isInApp && (window as any).ReactNativeWebView) {
+        console.log("Native: Richiedo riproduzione vocale via bridge");
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ 
+          type: 'SPEAK', 
+          text: text 
+        }));
+        // Per ora risolviamo subito, in futuro potremmo attendere evento 'SPEAK_DONE'
+        setTimeout(resolve, 2000);
+        return;
+      }
+
       if (!('speechSynthesis' in window)) {
         console.warn("SpeechSynthesis non supportato dal browser");
         resolve();
@@ -957,6 +992,19 @@ export default function App() {
             handleNotificationData(data.data);
           } else if (data.type === 'NOTIF_PERMISSION_RESULT') {
             setNotifPermission(data.permission);
+          } else if (data.type === 'READING_STATE_CHANGED') {
+            console.log("Native: Reading state changed:", data.enabled);
+            setIsReadingActive(!!data.enabled);
+          } else if (data.type === 'CAST_STATE_CHANGED') {
+            console.log("Cast: Stato cambiato da app nativa:", data);
+            setIsCasting(!!data.isCasting);
+            setDeviceName(data.deviceName || null);
+          } else if (data.type === 'STATE_UPDATE') {
+            // Risposta a GET_STATES
+            console.log("App: Ricevuto aggiornamento stati completi:", data);
+            if (data.isCasting !== undefined) setIsCasting(!!data.isCasting);
+            if (data.deviceName !== undefined) setDeviceName(data.deviceName);
+            if (data.isReadingActive !== undefined) setIsReadingActive(!!data.isReadingActive);
           } else if (data.type === 'LISTENING_STARTED' || data.type === 'MIC_PERMISSION_GRANTED') {
             // Se l'app ci dà l'ok, proviamo ad avviare la finestra vocale se non era già attiva
             if (!isMicWindowActiveRef.current) {
@@ -1129,10 +1177,7 @@ export default function App() {
     if (isCasting) {
       queueReading(testNotif).catch(err => console.error("Voice test queue error:", err));
     } else {
-      const utterance = new SpeechSynthesisUtterance(testNotif.message);
-      utterance.lang = voiceLang;
-      utterance.volume = volume / 100;
-      window.speechSynthesis.speak(utterance);
+      speakLocally(testNotif.message).catch(err => console.error("Voice test speak error:", err));
     }
   };
   return (
@@ -1153,7 +1198,7 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-2 md:gap-3">
             <button 
               onClick={toggleReading}
-              className={`flex items-center gap-2 px-4 py-1.5 md:px-6 md:py-2 glass-card rounded-full border-2 transition-all active:scale-95 ${isReadingActive ? "border-cyan-500/50 glow-cyan cursor-pointer hover:bg-cyan-500/10" : "border-slate-800 cursor-pointer hover:bg-slate-800/50"}`}
+              className={`flex items-center gap-2 px-4 py-1.5 md:px-6 md:py-2 glass-card rounded-full border-2 transition-all active:scale-95 ${isReadingActive ? "border-cyan-500/50 glow-cyan-strong cursor-pointer hover:bg-cyan-500/10" : "border-slate-800 cursor-pointer hover:bg-slate-800/50"}`}
             >
               <div className={`w-2 h-2 rounded-full ${isReadingActive ? "bg-cyan-400 shadow-[0_0_8px_#22d3ee]" : "bg-slate-600"}`}></div>
               <span className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isReadingActive ? "text-cyan-400" : "text-slate-500"}`}>
@@ -1163,7 +1208,7 @@ export default function App() {
             
             <button 
               onClick={handleCast}
-              className={`flex items-center gap-2 px-4 py-1.5 md:px-6 md:py-2 glass-card rounded-full border-2 transition-all active:scale-95 ${isCasting ? "border-cyan-500/50 glow-cyan cursor-pointer hover:bg-cyan-500/10" : "border-slate-800 cursor-pointer hover:bg-slate-800/50"}`}
+              className={`flex items-center gap-2 px-4 py-1.5 md:px-6 md:py-2 glass-card rounded-full border-2 transition-all active:scale-95 ${isCasting ? "border-cyan-500/50 glow-cyan-strong cursor-pointer hover:bg-cyan-500/10" : "border-slate-800 cursor-pointer hover:bg-slate-800/50"}`}
             >
               <div className={`w-2 h-2 rounded-full ${isCasting ? "bg-cyan-400 shadow-[0_0_8px_#22d3ee]" : "bg-slate-600"}`}></div>
               <span className={`text-[10px] md:text-xs font-bold tracking-wider uppercase ${isCasting ? "text-cyan-400" : "text-slate-500"}`}>
@@ -1656,10 +1701,11 @@ export default function App() {
 
         <div 
           onClick={handleCast}
-          className={`p-3 cursor-pointer transition-all rounded-2xl relative ${isCasting ? "text-cyan-400 bg-cyan-500/10" : "text-slate-500 hover:text-cyan-400"}`}
+          className={`p-3 cursor-pointer transition-all rounded-2xl relative flex items-center justify-center ${isCasting ? "text-cyan-400 bg-cyan-500/20 border border-cyan-500/30" : "text-slate-500 hover:text-cyan-400"}`}
+          style={isCasting ? { boxShadow: '0 0 20px rgba(34, 211, 238, 0.4)' } : {}}
         >
-          <Cast size={24} />
-          {isCasting && <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-[#020617]"></div>}
+          <Cast size={24} className={isCasting ? "animate-pulse" : ""} />
+          {isCasting && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-cyan-400 rounded-full border border-[#020617] shadow-[0_0_12px_#22d3ee]"></div>}
         </div>
       </aside>
 
