@@ -4,10 +4,18 @@ const withNotificationListener = (config) => {
   // Add JitPack repository
   config = withProjectBuildGradle(config, (config) => {
     if (!config.modResults.contents.includes('https://jitpack.io')) {
-      config.modResults.contents = config.modResults.contents.replace(
-        /allprojects\s*\{\s*repositories\s*\{/,
-        'allprojects {\n    repositories {\n        maven { url "https://jitpack.io" }'
-      );
+      // Find the repositories block inside allprojects
+      const repositoriesRegex = /allprojects\s*\{\s*repositories\s*\{/;
+      if (repositoriesRegex.test(config.modResults.contents)) {
+        config.modResults.contents = config.modResults.contents.replace(
+          repositoriesRegex,
+          'allprojects {\n    repositories {\n        maven { url "https://jitpack.io" }'
+        );
+      } else {
+        // Fallback: just append it at the end of the file if the regex fails for some reason
+        // though it really shouldn't on a standard Expo/RN project
+        config.modResults.contents += '\nallprojects { repositories { maven { url "https://jitpack.io" } } }\n';
+      }
     }
     return config;
   });
@@ -48,8 +56,7 @@ const withNotificationListener = (config) => {
           'android:name': 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListener',
           'android:permission': 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
           'android:exported': 'true',
-          'android:label': 'VoxHome Notification Listener',
-          'android:foregroundServiceType': 'specialUse'
+          'android:label': 'VoxHome Notification Listener'
         },
         'intent-filter': [
           {

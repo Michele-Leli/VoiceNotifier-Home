@@ -41,9 +41,7 @@
       [
         "react-native-google-cast",
         {
-          "receiverAppId": "CC1AD845",
-          "androidReceiverAppId": "CC1AD845",
-          "iosReceiverAppId": "CC1AD845"
+          "receiverAppId": "CC1AD845"
         }
       ],
       "./plugins/withNotificationListener.cjs"
