@@ -42,11 +42,13 @@ jobs:
         run: |
           # Pulizia profonda
           rm -rf android
+          rm -rf node_modules
+          npm install --legacy-peer-deps
           
           # 1. Prebuild: genera i file nativi
-          npx expo prebuild --platform android --no-install
+          npx expo prebuild --platform android --no-install --non-interactive
           
-          # 2. Bundle offline
+          # 2. Bundle offline (fondamentale per evitare l'errore rosso all'avvio)
           mkdir -p android/app/src/main/assets
           npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --reset-cache
           
@@ -54,7 +56,7 @@ jobs:
           chmod +x android/gradlew
           cd android
           ./gradlew clean
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace --info
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
