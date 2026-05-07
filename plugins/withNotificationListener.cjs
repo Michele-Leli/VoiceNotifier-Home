@@ -16,14 +16,18 @@ const withNotificationListener = (config) => {
       }
     }
 
-    // Force Kotlin version for compatibility with Expo 51
-    if (!contents.includes('kotlinVersion = "2.0.0"')) {
+    // Force Kotlin version for compatibility
+    const kotlinVersionTarget = '2.0.0';
+    
+    if (contents.includes('kotlinVersion =')) {
+      // Se esiste già, la sostituiamo
+      contents = contents.replace(/kotlinVersion\s*=\s*".*"/g, `kotlinVersion = "${kotlinVersionTarget}"`);
+      contents = contents.replace(/kotlinVersion\s*=\s*'.*'/g, `kotlinVersion = "${kotlinVersionTarget}"`);
+    } else {
+      // Se non esiste (improbabile in Expo), la aggiungiamo nel blocco ext
       const extBlockRegex = /ext\s*\{/;
       if (extBlockRegex.test(contents)) {
-        contents = contents.replace(
-          extBlockRegex,
-          'ext {\n        kotlinVersion = "2.0.0"'
-        );
+        contents = contents.replace(extBlockRegex, `ext {\n        kotlinVersion = "${kotlinVersionTarget}"`);
       }
     }
 
