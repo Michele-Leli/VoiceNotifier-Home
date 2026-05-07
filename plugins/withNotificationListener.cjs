@@ -44,17 +44,23 @@ const withNotificationListener = (config) => {
     });
 
     // Aggiunta namespace tools per gestire i conflitti di merge
-    if (!manifest.$['xmlns:tools']) {
-      manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+    if (!androidManifest.manifest.$) {
+      androidManifest.manifest.$ = {};
+    }
+    if (!androidManifest.manifest.$['xmlns:tools']) {
+      androidManifest.manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
     }
 
     // Risoluzione conflitti comuni (allowBackup, largeHeap)
+    if (!mainApplication.$) {
+      mainApplication.$ = {};
+    }
     mainApplication.$['android:allowBackup'] = 'false';
     mainApplication.$['android:largeHeap'] = 'true';
     
     // Gestione tools:replace
     let existingReplace = mainApplication.$['tools:replace'] || '';
-    let replaceItems = existingReplace ? existingReplace.split(',').map(s => s.trim()) : [];
+    let replaceItems = existingReplace ? existingReplace.split(',').map(s => s.trim()).filter(Boolean) : [];
     
     if (!replaceItems.includes('android:allowBackup')) replaceItems.push('android:allowBackup');
     if (!replaceItems.includes('android:largeHeap')) replaceItems.push('android:largeHeap');

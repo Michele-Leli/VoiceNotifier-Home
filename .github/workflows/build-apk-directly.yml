@@ -37,19 +37,24 @@ jobs:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
-          # 1. Pulisce e rigenera i file nativi
+          # 1. Pulisce tutto
           rm -rf android
-          npx expo prebuild --platform android --no-install --non-interactive
           
-          # 2. Bundle offline (per evitare l'errore rosso all'avvio)
-          mkdir -p android/app/src/main/assets
-          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --reset-cache
+          # 2. Genera i file nativi (Expo 51)
+          # Non usiamo --template per evitare errori di template mancante, Expo userà quello di default
+          npx expo prebuild --platform android --non-interactive --no-install
           
-          # 3. Compilazione
+          # 3. Assicuriamoci che gradlew sia eseguibile
           chmod +x android/gradlew
+          
+          # 4. Bundle offline (facoltativo se gradle lo fa, ma utile per certezza)
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --reset-cache || echo "Bundle failed, relying on gradle"
+          
+          # 5. Compilazione
           cd android
           ./gradlew clean
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace --info
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
