@@ -3,19 +3,20 @@ const { withAndroidManifest, withProjectBuildGradle } = require('@expo/config-pl
 const withNotificationListener = (config) => {
   // Add JitPack repository
   config = withProjectBuildGradle(config, (config) => {
-    if (!config.modResults.contents.includes('https://jitpack.io')) {
-      // Find the repositories block inside allprojects
-      const repositoriesRegex = /allprojects\s*\{\s*repositories\s*\{/;
-      if (repositoriesRegex.test(config.modResults.contents)) {
-        config.modResults.contents = config.modResults.contents.replace(
-          repositoriesRegex,
-          'allprojects {\n    repositories {\n        maven { url "https://jitpack.io" }'
-        );
-      } else {
-        // Fallback: just append it at the end of the file if the regex fails for some reason
-        // though it really shouldn't on a standard Expo/RN project
-        config.modResults.contents += '\nallprojects { repositories { maven { url "https://jitpack.io" } } }\n';
-      }
+    if (config.modResults.contents.includes('https://jitpack.io')) {
+      return config;
+    }
+
+    // Add it to allprojects repositories
+    const allProjectsRepositoriesRegex = /allprojects\s*\{\s*repositories\s*\{/;
+    if (allProjectsRepositoriesRegex.test(config.modResults.contents)) {
+      config.modResults.contents = config.modResults.contents.replace(
+        allProjectsRepositoriesRegex,
+        'allprojects {\n    repositories {\n        maven { url "https://jitpack.io" }'
+      );
+    } else {
+      // Fallback
+      config.modResults.contents += '\nallprojects { repositories { maven { url "https://jitpack.io" } } }\n';
     }
     return config;
   });
@@ -24,25 +25,6 @@ const withNotificationListener = (config) => {
     const androidManifest = config.modResults;
     const manifest = androidManifest.manifest;
     const mainApplication = manifest.application[0];
-
-    // Add tools namespace
-    if (!manifest.$['xmlns:tools']) {
-      manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
-    }
-
-    // Set allowBackup and tools:replace to avoid merge conflicts
-    mainApplication.$['android:allowBackup'] = 'false';
-    mainApplication.$['android:largeHeap'] = 'true';
-    if (!mainApplication.$['tools:replace']) {
-      mainApplication.$['tools:replace'] = 'android:allowBackup,android:largeHeap';
-    } else {
-      if (!mainApplication.$['tools:replace'].includes('android:allowBackup')) {
-        mainApplication.$['tools:replace'] += ',android:allowBackup';
-      }
-      if (!mainApplication.$['tools:replace'].includes('android:largeHeap')) {
-        mainApplication.$['tools:replace'] += ',android:largeHeap';
-      }
-    }
 
     // Ensure the services are registered
     if (!mainApplication.service) {

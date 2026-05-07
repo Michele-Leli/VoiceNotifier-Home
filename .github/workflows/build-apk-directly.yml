@@ -36,7 +36,7 @@ jobs:
           npx expo install --check --fix || true
           
           # 3. Installazione manuale della versione specifica di TypeScript richiesta
-          npm install typescript@~5.3.3 --save-dev
+          npm install typescript@~5.5.0 --save-dev
 
       - name: Build Android APK
         run: |
