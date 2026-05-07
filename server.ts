@@ -99,6 +99,7 @@ async function startServer() {
 
   // Notification buffer and tracking
   const notificationBuffer: AppNotification[] = [];
+  const processedHashes = new Set<string>();
   const discoveredApps = new Set<string>(["WhatsApp", "VoxHome Bridge", "IFTTT", "Telegram", "Gmail", "Instagram", "Slack", "Discord"]);
   const MAX_BUFFER = 20;
 
@@ -179,6 +180,15 @@ async function startServer() {
       console.warn("Webhook: Nessun messaggio trovato nel payload, ignoro.");
       return res.status(400).json({ error: "Missing message content" });
     }
+
+    // Deduplication check
+    const hash = `${appName}:${message}:${Math.floor(Date.now() / 2000)}`;
+    if (processedHashes.has(hash)) {
+      console.log("Webhook: Duplicato ignorato (Backend Check)");
+      return res.json({ status: "skipped", reason: "duplicate" });
+    }
+    processedHashes.add(hash);
+    setTimeout(() => processedHashes.delete(hash), 10000);
 
     const newNotification: AppNotification = { 
       app: appName, 

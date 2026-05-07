@@ -25,6 +25,7 @@
         "backgroundColor": "#020617"
       },
       "package": "com.miky.voxhome.voicenotifier",
+      "largeHeap": true,
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "FOREGROUND_SERVICE",
@@ -40,7 +41,9 @@
       [
         "react-native-google-cast",
         {
-          "receiverAppId": "CC1AD845"
+          "receiverAppId": "CC1AD845",
+          "androidReceiverAppId": "CC1AD845",
+          "iosReceiverAppId": "CC1AD845"
         }
       ],
       "./plugins/withNotificationListener.cjs"

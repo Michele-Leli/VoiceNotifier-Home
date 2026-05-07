@@ -1,6 +1,17 @@
-const { withAndroidManifest } = require('@expo/config-plugins');
+const { withAndroidManifest, withProjectBuildGradle } = require('@expo/config-plugins');
 
 const withNotificationListener = (config) => {
+  // Add JitPack repository
+  config = withProjectBuildGradle(config, (config) => {
+    if (!config.modResults.contents.includes('https://jitpack.io')) {
+      config.modResults.contents = config.modResults.contents.replace(
+        /allprojects\s*\{\s*repositories\s*\{/,
+        'allprojects {\n    repositories {\n        maven { url "https://jitpack.io" }'
+      );
+    }
+    return config;
+  });
+
   return withAndroidManifest(config, async (config) => {
     const androidManifest = config.modResults;
     const manifest = androidManifest.manifest;
@@ -13,10 +24,16 @@ const withNotificationListener = (config) => {
 
     // Set allowBackup and tools:replace to avoid merge conflicts
     mainApplication.$['android:allowBackup'] = 'false';
+    mainApplication.$['android:largeHeap'] = 'true';
     if (!mainApplication.$['tools:replace']) {
-      mainApplication.$['tools:replace'] = 'android:allowBackup';
-    } else if (!mainApplication.$['tools:replace'].includes('android:allowBackup')) {
-      mainApplication.$['tools:replace'] += ',android:allowBackup';
+      mainApplication.$['tools:replace'] = 'android:allowBackup,android:largeHeap';
+    } else {
+      if (!mainApplication.$['tools:replace'].includes('android:allowBackup')) {
+        mainApplication.$['tools:replace'] += ',android:allowBackup';
+      }
+      if (!mainApplication.$['tools:replace'].includes('android:largeHeap')) {
+        mainApplication.$['tools:replace'] += ',android:largeHeap';
+      }
     }
 
     // Ensure the services are registered
@@ -31,7 +48,8 @@ const withNotificationListener = (config) => {
           'android:name': 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListener',
           'android:permission': 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
           'android:exported': 'true',
-          'android:label': 'VoxHome Notification Listener'
+          'android:label': 'VoxHome Notification Listener',
+          'android:foregroundServiceType': 'specialUse'
         },
         'intent-filter': [
           {
