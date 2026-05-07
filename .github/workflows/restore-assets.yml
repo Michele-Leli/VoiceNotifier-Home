@@ -1,0 +1,32 @@
+name: Restore Protected Assets
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Recovery
+        run: |
+          git config --global user.name "Asset Protector"
+          git config --global user.email "actions@github.com"
+          
+          # Pesca i file dal caveau e li forza nel main
+          git checkout vault-assets -- "assets/*.png" "plugins/*.jar" || echo "Alcuni file non trovati nel vault"
+          
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "fix: ripristino asset corrotti da AI Studio"
+            git push origin main
+          else
+            echo "Nulla da ripristinare."
+          fi
