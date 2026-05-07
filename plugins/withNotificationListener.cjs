@@ -26,6 +26,46 @@ const withNotificationListener = (config) => {
     const manifest = androidManifest.manifest;
     const mainApplication = manifest.application[0];
 
+    // Ensure permissions are present
+    if (!manifest['uses-permission']) {
+      manifest['uses-permission'] = [];
+    }
+    
+    const requiredPermissions = [
+      'android.permission.FOREGROUND_SERVICE',
+      'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
+      'android.permission.RECEIVE_BOOT_COMPLETED'
+    ];
+
+    requiredPermissions.forEach(perm => {
+      if (!manifest['uses-permission'].find(p => p.$['android:name'] === perm)) {
+        manifest['uses-permission'].push({ $: { 'android:name': perm } });
+      }
+    });
+
+    // Aggiunta namespace tools per gestire i conflitti di merge
+    if (!manifest.$['xmlns:tools']) {
+      manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+    }
+
+    // Risoluzione conflitti comuni (allowBackup, largeHeap)
+    mainApplication.$['android:allowBackup'] = 'false';
+    mainApplication.$['android:largeHeap'] = 'true';
+    
+    const toolsReplace = [];
+    if (!mainApplication.$['tools:replace']) {
+      toolsReplace.push('android:allowBackup', 'android:largeHeap');
+    } else {
+      const existing = mainApplication.$['tools:replace'].split(',');
+      if (!existing.includes('android:allowBackup')) existing.push('android:allowBackup');
+      if (!existing.includes('android:largeHeap')) existing.push('android:largeHeap');
+      mainApplication.$['tools:replace'] = existing.join(',');
+    }
+    
+    if (toolsReplace.length > 0) {
+      mainApplication.$['tools:replace'] = toolsReplace.join(',');
+    }
+
     // Ensure the services are registered
     if (!mainApplication.service) {
       mainApplication.service = [];
