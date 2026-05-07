@@ -55,15 +55,18 @@ jobs:
           # 4. IL TRUCCO PER I METADATI (Sintassi corretta per la root)
           # Invece di aggiungere blocchi 'android', usiamo questo che è universale:
           echo "subprojects { tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { kotlinOptions { freeCompilerArgs += ['-Xskip-metadata-version-check'] } } }" >> build.gradle
-
-          # 5. PULIZIA KEYSTORE (Risolve il problema DerInputStream)
-          # Eliminiamo il keystore potenzialmente corrotto
-          rm -f app/debug.keystore
+          cd android
           
-          # 6. Compilazione
+          # 5. Eliminiamo quello vecchio (se esistesse ancora)
+          rm -f app/debug.keystore
+
+          # 6. GENERIAMO UN NUOVO KEYSTORE MANUALE
+          # Usiamo 'keytool' (già presente nell'immagine Ubuntu) per creare un certificato di debug valido
+          keytool -genkey -v -keystore app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+
+          # 7. Compilazione
           chmod +x gradlew
           ./gradlew clean
-          # Aggiungiamo un parametro che forza la generazione di un nuovo keystore se manca
           ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon
           
       - name: Upload APK
