@@ -55,7 +55,6 @@ jobs:
           # 4. IL TRUCCO PER I METADATI (Sintassi corretta per la root)
           # Invece di aggiungere blocchi 'android', usiamo questo che è universale:
           echo "subprojects { tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { kotlinOptions { freeCompilerArgs += ['-Xskip-metadata-version-check'] } } }" >> build.gradle
-          cd android
           
           # 5. Eliminiamo quello vecchio (se esistesse ancora)
           rm -f app/debug.keystore
