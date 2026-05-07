@@ -30,25 +30,26 @@ jobs:
 
       - name: Build Android APK
         env:
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
-          NODE_OPTIONS: "--max-old-space-size=4096"
           CI: 1
         run: |
-          # 1. Rigenerazione (Prebuild) 
-          # Il tuo plugin JS ora scriverà Kotlin 2.0.0 nel build.gradle
-          npx expo prebuild --platform android --no-install
-
-          # 2. Ripristino Asset dal Vault
+          # 1. Configurazione Git
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
+          
+          # 2. RECUPERO ASSET (PNG e JAR) - FONDAMENTALE PRIMA DEL PREBUILD
           git fetch origin vault-assets
-          git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati"
+          # Checkout esplicito: prendiamo tutto quello che c'è in assets e i jar necessari
+          git checkout origin/vault-assets -- "assets/*.png" "**/*.jar" || echo "Attenzione: Alcuni asset non trovati"
 
-          # 3. Compilazione
+          # 3. Rigenerazione (Prebuild)
+          # Ora che le immagini ci sono, Expo non andrà in crash
+          npx expo prebuild --platform android --no-install
+
+          # 4. Compilazione
           cd android
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon --stacktrace
+          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
