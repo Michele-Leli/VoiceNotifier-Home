@@ -9,6 +9,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Force Restore Assets for Build
+        run: |
+          git fetch origin vault-assets
+          git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati, procedo comunque"
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
