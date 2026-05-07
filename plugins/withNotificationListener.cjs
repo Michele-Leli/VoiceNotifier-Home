@@ -1,23 +1,33 @@
-const { withAndroidManifest, withProjectBuildGradle } = require('@expo/config-plugins');
+const { withAndroidManifest, withProjectBuildGradle, withAppBuildGradle } = require('@expo/config-plugins');
 
 const withNotificationListener = (config) => {
-  // Add JitPack repository
+  // Add JitPack repository and ensure Kotlin version
   config = withProjectBuildGradle(config, (config) => {
-    if (config.modResults.contents.includes('https://jitpack.io')) {
-      return config;
+    let contents = config.modResults.contents;
+
+    // Add JitPack
+    if (!contents.includes('https://jitpack.io')) {
+      const allProjectsRepositoriesRegex = /allprojects\s*\{\s*repositories\s*\{/;
+      if (allProjectsRepositoriesRegex.test(contents)) {
+        contents = contents.replace(
+          allProjectsRepositoriesRegex,
+          'allprojects {\n    repositories {\n        maven { url "https://jitpack.io" }'
+        );
+      }
     }
 
-    // Add it to allprojects repositories
-    const allProjectsRepositoriesRegex = /allprojects\s*\{\s*repositories\s*\{/;
-    if (allProjectsRepositoriesRegex.test(config.modResults.contents)) {
-      config.modResults.contents = config.modResults.contents.replace(
-        allProjectsRepositoriesRegex,
-        'allprojects {\n    repositories {\n        maven { url "https://jitpack.io" }'
-      );
-    } else {
-      // Fallback
-      config.modResults.contents += '\nallprojects { repositories { maven { url "https://jitpack.io" } } }\n';
+    // Force Kotlin version for compatibility with Expo 51
+    if (!contents.includes('kotlinVersion = "1.9.24"')) {
+      const extBlockRegex = /ext\s*\{/;
+      if (extBlockRegex.test(contents)) {
+        contents = contents.replace(
+          extBlockRegex,
+          'ext {\n        kotlinVersion = "1.9.24"'
+        );
+      }
     }
+
+    config.modResults.contents = contents;
     return config;
   });
 
@@ -31,10 +41,12 @@ const withNotificationListener = (config) => {
       manifest['uses-permission'] = [];
     }
     
+    // Use android namespaced names for certainty
     const requiredPermissions = [
       'android.permission.FOREGROUND_SERVICE',
       'android.permission.FOREGROUND_SERVICE_SPECIAL_USE',
-      'android.permission.RECEIVE_BOOT_COMPLETED'
+      'android.permission.RECEIVE_BOOT_COMPLETED',
+      'android.permission.WAKE_LOCK'
     ];
 
     requiredPermissions.forEach(perm => {
@@ -51,7 +63,7 @@ const withNotificationListener = (config) => {
       androidManifest.manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
     }
 
-    // Risoluzione conflitti comuni (allowBackup, largeHeap)
+    // Risoluzione conflitti comuni
     if (!mainApplication.$) {
       mainApplication.$ = {};
     }
@@ -62,8 +74,9 @@ const withNotificationListener = (config) => {
     let existingReplace = mainApplication.$['tools:replace'] || '';
     let replaceItems = existingReplace ? existingReplace.split(',').map(s => s.trim()).filter(Boolean) : [];
     
-    if (!replaceItems.includes('android:allowBackup')) replaceItems.push('android:allowBackup');
-    if (!replaceItems.includes('android:largeHeap')) replaceItems.push('android:largeHeap');
+    ['android:allowBackup', 'android:largeHeap', 'android:label', 'android:icon'].forEach(item => {
+      if (!replaceItems.includes(item)) replaceItems.push(item);
+    });
     
     mainApplication.$['tools:replace'] = replaceItems.join(',');
 
@@ -79,7 +92,7 @@ const withNotificationListener = (config) => {
           'android:name': 'com.lesimoes.androidnotificationlistener.RNAndroidNotificationListener',
           'android:permission': 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
           'android:exported': 'true',
-          'android:label': 'VoxHome Notification Listener',
+          'android:label': 'VoxHome Listener',
           'android:foregroundServiceType': 'specialUse'
         },
         'intent-filter': [
