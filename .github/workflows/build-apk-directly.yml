@@ -59,7 +59,7 @@ jobs:
           # 5. Compilazione
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon
+          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon -Dkotlin.metadata.version.check=false
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
