@@ -9,7 +9,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Force Restore Assets for Build
+      # 1. Recuperiamo gli asset prima di tutto
+      - name: Force Restore Assets from Vault
         run: |
           git fetch origin vault-assets
           git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati, procedo comunque"
@@ -29,7 +30,6 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --legacy-peer-deps
-          # Forza TypeScript corretto per Expo 51
           npm install --save-dev typescript@~5.3.3 --legacy-peer-deps
 
       - name: Build Android APK
@@ -37,23 +37,24 @@ jobs:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
-          # 1. Pulizia e rigenerazione file nativi (Expo 51)
-          rm -rf android
+          # 1. RIGENERAZIONE (Senza cancellare tutto se possibile)
+          # Se 'android' esiste già, prebuild lo aggiorna. Se lo cancelli, perdi i .jar ripristinati.
           npx expo prebuild --platform android --non-interactive --no-install
-          
-          # 2. Permessi di esecuzione
+
+          # 2. RIPRISTINO POST-PREBUILD (Essenziale!)
+          # Expo prebuild potrebbe aver sovrascritto i file appena ripristinati. 
+          # Li forziamo di nuovo dentro la cartella generata.
+          git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Riapplicazione asset fallita"
+
+          # 3. Permessi e Compilazione
           chmod +x android/gradlew
-          
-          # 3. Compilazione con Gradle
           cd android
-          # Pulisce la cache locale di gradle nel progetto e compila
           ./gradlew clean
-          # Usiamo assembleRelease per generare l'APK
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          # Usiamo release ma con configurazione debug per evitare errori di firma (Keystore)
+          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-final-funzionante
-          # Nota: il percorso cambia in 'release'
+          name: app-release-build
           path: android/app/build/outputs/apk/release/app-release.apk
