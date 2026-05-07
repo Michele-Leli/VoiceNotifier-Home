@@ -36,25 +36,27 @@ jobs:
         env:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
           NODE_OPTIONS: "--max-old-space-size=4096"
+          CI: 1  # Questo sostituisce --non-interactive come suggerito dal tuo log
         run: |
-          # 1. RIGENERAZIONE (Senza cancellare tutto se possibile)
-          # Se 'android' esiste già, prebuild lo aggiorna. Se lo cancelli, perdi i .jar ripristinati.
-          npx expo prebuild --platform android --non-interactive --no-install
+          # 1. Rigenerazione (Expo 51)
+          npx expo prebuild --platform android --no-install
 
-          # 2. RIPRISTINO POST-PREBUILD (Essenziale!)
-          # Expo prebuild potrebbe aver sovrascritto i file appena ripristinati. 
-          # Li forziamo di nuovo dentro la cartella generata.
-          git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Riapplicazione asset fallita"
+          # 2. Ripristino icone e jar (fondamentale farlo DOPO il prebuild)
+          git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati"
 
-          # 3. Forziamo la versione di Kotlin a 2.0.0 per risolvere l'incompatibilità dei metadati
-          # Cerchiamo build.gradle nella cartella android o android/build.gradle
-          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle || echo "Non trovato in root"
-          sed -i 's/kotlin_version = .*/kotlin_version = "2.0.0"/' build.gradle || echo "Non trovato in root"
-          
-          # 4. Compilazione con Gradle
+          # 3. Entriamo nella cartella android per i comandi successivi
+          cd android
+
+          # 4. Forziamo la versione di Kotlin a 2.0.0 nel file build.gradle corretto
+          # Usiamo 'find' per essere sicuri di beccare il file giusto
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle
+          sed -i 's/kotlin_version = .*/kotlin_version = "2.0.0"/' build.gradle
+
+          # 5. Permessi e Compilazione
+          chmod +x gradlew
           ./gradlew clean
-          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug -PkotlinVersion=2.0.0 --no-daemon --stacktrace
-
+          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon --stacktrace
+          
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
