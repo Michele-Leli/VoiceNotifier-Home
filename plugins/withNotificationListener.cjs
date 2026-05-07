@@ -52,19 +52,14 @@ const withNotificationListener = (config) => {
     mainApplication.$['android:allowBackup'] = 'false';
     mainApplication.$['android:largeHeap'] = 'true';
     
-    const toolsReplace = [];
-    if (!mainApplication.$['tools:replace']) {
-      toolsReplace.push('android:allowBackup', 'android:largeHeap');
-    } else {
-      const existing = mainApplication.$['tools:replace'].split(',');
-      if (!existing.includes('android:allowBackup')) existing.push('android:allowBackup');
-      if (!existing.includes('android:largeHeap')) existing.push('android:largeHeap');
-      mainApplication.$['tools:replace'] = existing.join(',');
-    }
+    // Gestione tools:replace
+    let existingReplace = mainApplication.$['tools:replace'] || '';
+    let replaceItems = existingReplace ? existingReplace.split(',').map(s => s.trim()) : [];
     
-    if (toolsReplace.length > 0) {
-      mainApplication.$['tools:replace'] = toolsReplace.join(',');
-    }
+    if (!replaceItems.includes('android:allowBackup')) replaceItems.push('android:allowBackup');
+    if (!replaceItems.includes('android:largeHeap')) replaceItems.push('android:largeHeap');
+    
+    mainApplication.$['tools:replace'] = replaceItems.join(',');
 
     // Ensure the services are registered
     if (!mainApplication.service) {

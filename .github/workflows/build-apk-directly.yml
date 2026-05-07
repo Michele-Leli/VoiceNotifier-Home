@@ -28,11 +28,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Installazione con gestione conflitti peer
           npm install --legacy-peer-deps
-          # Verifica e correzione automatica dipendenze Expo
-          npx expo install --check --fix || true
-          # Forza la versione corretta di TypeScript per Expo 51
+          # Forza TypeScript corretto per Expo 51
           npm install --save-dev typescript@~5.3.3 --legacy-peer-deps
 
       - name: Build Android APK
@@ -40,23 +37,19 @@ jobs:
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
           NODE_OPTIONS: "--max-old-space-size=4096"
         run: |
-          # Pulizia profonda
+          # 1. Pulisce e rigenera i file nativi
           rm -rf android
-          rm -rf node_modules
-          npm install --legacy-peer-deps
-          
-          # 1. Prebuild: genera i file nativi
           npx expo prebuild --platform android --no-install --non-interactive
           
-          # 2. Bundle offline (fondamentale per evitare l'errore rosso all'avvio)
+          # 2. Bundle offline (per evitare l'errore rosso all'avvio)
           mkdir -p android/app/src/main/assets
           npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res --reset-cache
           
-          # 3. Compilazione nativa
+          # 3. Compilazione
           chmod +x android/gradlew
           cd android
           ./gradlew clean
-          ./gradlew assembleRelease --no-daemon --stacktrace --info
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
