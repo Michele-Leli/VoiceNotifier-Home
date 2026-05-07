@@ -30,7 +30,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --legacy-peer-deps
-          npm install --save-dev typescript@~5.3.3 --legacy-peer-deps
+          npm install expo-build-properties --legacy-peer-deps
 
       - name: Build Android APK
         env:
