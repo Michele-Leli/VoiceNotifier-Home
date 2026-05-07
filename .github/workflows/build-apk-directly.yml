@@ -38,24 +38,26 @@ jobs:
           NODE_OPTIONS: "--max-old-space-size=4096"
           CI: 1
         run: |
-          # 1. Rigenerazione cartella nativa
+          # 1. Installiamo le proprietà di build
+          npm install expo-build-properties --legacy-peer-deps
+
+          # 2. Rigenerazione (Prebuild)
           npx expo prebuild --platform android --no-install
 
-          # 2. Ripristino icone e jar dal Vault
+          # 3. Ripristino Asset
           git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati"
 
-          # 3. FIX VERSIONI KOTLIN (Entriamo nella cartella android)
+          # 4. TRUCCO FINALE: Forziamo la versione nel file gradle.properties
+          # Questo sovrascrive qualsiasi altra impostazione di Expo o delle librerie
+          echo "android.kotlinVersion=2.0.0" >> android/gradle.properties
+          echo "kotlinVersion=2.0.0" >> android/gradle.properties
+
+          # 5. Compilazione
           cd android
-          
-          # Cerchiamo di sovrascrivere la variabile kotlinVersion ovunque sia definita
-          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle
-          sed -i 's/kotlin_version = .*/kotlin_version = "2.0.0"/' build.gradle
-          
-          # 4. Permessi e Compilazione
           chmod +x gradlew
           ./gradlew clean
-          # Passiamo la versione anche come parametro diretto per sicurezza
-          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug -PkotlinVersion=2.0.0 --no-daemon --stacktrace
+          # Forziamo il parametro anche qui per disperazione
+          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug -PkotlinVersion=2.0.0 -Pandroid.kotlinVersion=2.0.0 --no-daemon --stacktrace
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
