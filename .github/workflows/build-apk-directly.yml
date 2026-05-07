@@ -8,12 +8,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # 1. Recuperiamo gli asset prima di tutto
-      - name: Force Restore Assets from Vault
-        run: |
-          git fetch origin vault-assets
-          git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati, procedo comunque"
+        with:
+          fetch-depth: 0
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -30,41 +26,6 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --legacy-peer-deps
-          npm install expo-build-properties --legacy-peer-deps
-
-      name: Build APK Directly
-on:
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # 1. Recuperiamo gli asset prima di tutto
-      - name: Force Restore Assets from Vault
-        run: |
-          git fetch origin vault-assets
-          git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati, procedo comunque"
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: |
-          npm install --legacy-peer-deps
-          # Assicuriamoci che expo-build-properties sia presente per app.json
           npm install expo-build-properties --legacy-peer-deps
 
       - name: Build Android APK
@@ -74,21 +35,23 @@ jobs:
           CI: 1
         run: |
           # 1. Rigenerazione (Prebuild) 
-          # Qui il tuo plugin aggiornato cambierà la versione di Kotlin nel build.gradle
+          # Il tuo plugin JS ora scriverà Kotlin 2.0.0 nel build.gradle
           npx expo prebuild --platform android --no-install
 
-          # 2. Ripristino Asset dopo il prebuild (che pulisce la cartella)
+          # 2. Ripristino Asset dal Vault
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
+          git fetch origin vault-assets
           git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Asset non trovati"
 
           # 3. Compilazione
           cd android
           chmod +x gradlew
           ./gradlew clean
-          # Usiamo un comando pulito, senza forzature manuali che creano conflitti
           ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon --stacktrace
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release-build
-          path: android/app/build/outputs/apk/release/app-release.apk          
+          path: android/app/build/outputs/apk/release/app-release.apk
