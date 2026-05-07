@@ -17,12 +17,12 @@ const withNotificationListener = (config) => {
     }
 
     // Force Kotlin version for compatibility with Expo 51
-    if (!contents.includes('kotlinVersion = "1.9.24"')) {
+    if (!contents.includes('kotlinVersion = "2.0.0"')) {
       const extBlockRegex = /ext\s*\{/;
       if (extBlockRegex.test(contents)) {
         contents = contents.replace(
           extBlockRegex,
-          'ext {\n        kotlinVersion = "1.9.24"'
+          'ext {\n        kotlinVersion = "2.0.0"'
         );
       }
     }
