@@ -101,6 +101,12 @@ export default function App() {
   );
 
   const requestNotifPermission = async () => {
+    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    if (isInApp && (window as any).ReactNativeWebView) {
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'REQUEST_NOTIF_PERMISSION' }));
+      return "default"; // Will be updated by native side
+    }
+
     if (typeof Notification !== "undefined") {
       const permission = await Notification.requestPermission();
       setNotifPermission(permission);
@@ -559,6 +565,51 @@ export default function App() {
     return readingPromiseRef.current;
   }, [readOutLoud]);
 
+  const stopVoiceWindow = useCallback(() => {
+    console.log("Stopping voice window...");
+    isMicWindowActiveRef.current = false;
+    setIsMicWindowActive(false);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch (e) {}
+    }
+    if (listeningTimerRef.current) {
+      clearTimeout(listeningTimerRef.current);
+      listeningTimerRef.current = null;
+    }
+  }, []);
+
+  const startListeningWindow = useCallback(() => {
+    if (!checkWiFiAccess()) {
+      console.warn("WiFi: Accesso microfono negato (Fuori casa)");
+      return;
+    }
+
+    console.log("Starting 10s voice window...");
+    
+    // Reset any existing timer
+    if (listeningTimerRef.current) {
+      clearTimeout(listeningTimerRef.current);
+    }
+    
+    isMicWindowActiveRef.current = true;
+    setIsMicWindowActive(true);
+    
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+      }
+    } catch (e) {
+      // Already started
+    }
+
+    // Set 10s window
+    listeningTimerRef.current = setTimeout(() => {
+      stopVoiceWindow();
+    }, 10000);
+  }, [stopVoiceWindow]);
+
   const processNotification = useCallback((notif: Notification, force: boolean = false) => {
     const appNameLC = notif.app.toLowerCase();
     const currentAllowed = allowedAppsRef.current;
@@ -575,18 +626,38 @@ export default function App() {
         return newList;
       });
       console.log("App: Aggiunta automatica app eseguita, invio a coda...");
-      allowedAppsRef.current = [...currentAllowed, newConfig];
-      return queueReading(notif, force);
+      config = newConfig;
     }
 
-    if (config.enabled) {
+    // Se l'app non è abilitata nelle impostazioni, non registrarla nemmeno nello storico (come chiesto dall'utente)
+    if (!config.enabled) {
+      console.warn(`App: Notifica ignorata per ${notif.app} (App DISABILITATA in lista)`);
+      return Promise.resolve();
+    }
+
+    // Aggiungi allo storico solo se abilitata
+    setNotifications(prev => {
+      const exists = prev.some(n => 
+        n.message === notif.message && 
+        n.app === notif.app &&
+        Math.abs(n.timestamp - notif.timestamp) < 5000
+      );
+      if (exists) return prev;
+      return [notif, ...prev].slice(0, 50);
+    });
+
+    if (isReadingActiveRef.current || force) {
       console.log(`App: Invio a coda lettura per ${notif.app} (Abilitata)`);
       return queueReading(notif, force);
     } else {
-      console.warn(`App: Lettura saltata per ${notif.app} (App DISABILITATA in lista)`);
+      console.log(`App: Incremento contatore non letti per ${notif.app} (Voce DISATTIVATA)`);
+      setUnreadCount(prev => prev + 1);
+      
+      // Start listening window for 10s to allow user to say "Leggi"
+      startListeningWindow();
     }
     return Promise.resolve();
-  }, [queueReading]);
+  }, [queueReading, startListeningWindow]);
 
   const sendTestNotification = async () => {
     const testPayload = {
@@ -654,51 +725,6 @@ export default function App() {
   useEffect(() => {
     readRecentNotificationsRef.current = readRecentNotifications;
   }, [readRecentNotifications]);
-
-  const stopVoiceWindow = useCallback(() => {
-    console.log("Stopping voice window...");
-    isMicWindowActiveRef.current = false;
-    setIsMicWindowActive(false);
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {}
-    }
-    if (listeningTimerRef.current) {
-      clearTimeout(listeningTimerRef.current);
-      listeningTimerRef.current = null;
-    }
-  }, []);
-
-  const startListeningWindow = useCallback(() => {
-    if (!checkWiFiAccess()) {
-      console.warn("WiFi: Accesso microfono negato (Fuori casa)");
-      return;
-    }
-
-    console.log("Starting 10s voice window...");
-    
-    // Reset any existing timer
-    if (listeningTimerRef.current) {
-      clearTimeout(listeningTimerRef.current);
-    }
-    
-    isMicWindowActiveRef.current = true;
-    setIsMicWindowActive(true);
-    
-    try {
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-      }
-    } catch (e) {
-      // Already started
-    }
-
-    // Set 10s window
-    listeningTimerRef.current = setTimeout(() => {
-      stopVoiceWindow();
-    }, 10000);
-  }, [stopVoiceWindow]);
 
   // Voice Recognition setup
   useEffect(() => {
@@ -828,6 +854,17 @@ export default function App() {
   }, []); // Only setup once
 
   const toggleListening = () => {
+    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    
+    if (isInApp && (window as any).ReactNativeWebView) {
+      if (isListening) {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'STOP_LISTENING' }));
+      } else {
+        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'START_LISTENING' }));
+      }
+      return;
+    }
+
     if (isListening) {
       stopVoiceWindow();
     } else {
@@ -857,21 +894,7 @@ export default function App() {
 
     newSocket.on("notification", (data: Notification) => {
       console.log("Ricevuta nuova notifica via socket:", data);
-      
-      setNotifications(prev => {
-        const exists = prev.some(n => n.timestamp === data.timestamp && n.message === data.message);
-        if (exists) return prev;
-        return [data, ...prev].slice(0, 50);
-      });
-      
-      setUnreadCount(prev => prev + 1);
-      
       processNotification(data).catch(err => console.error("Notification process error:", err));
-      
-      // Start listening window for 10s to allow user to say "Leggi"
-      if (!isReadingActiveRef.current) {
-        startListeningWindow();
-      }
     });
 
     newSocket.on("buffer_sync", (buffer: Notification[]) => {
@@ -896,6 +919,16 @@ export default function App() {
   // Handle SW and BroadcastChannel notifications
   useEffect(() => {
     const handleNotificationData = (pushData: any) => {
+      // Evita duplicati immediati tra BroadcastChannel e PostMessage
+      const now = Date.now();
+      const lastProcessed = (window as any)._lastProcessedNotif;
+      if (lastProcessed && 
+          lastProcessed.message === pushData.message && 
+          Math.abs(now - lastProcessed.time) < 1000) {
+        return;
+      }
+      (window as any)._lastProcessedNotif = { message: pushData.message, time: now };
+
       const notification: Notification = {
         app: pushData.appName || pushData.app || 'Push',
         title: pushData.title || '',
@@ -904,31 +937,32 @@ export default function App() {
       };
       
       console.log("App: Ricevuta notifica (SW/BC):", notification);
-      
-      setNotifications(prev => {
-        const exists = prev.some(n => 
-          n.message === notification.message && 
-          Math.abs(n.timestamp - notification.timestamp) < 5000
-        );
-        if (exists) {
-          console.log("App: Duplicato ignorato");
-          return prev;
-        }
-        return [notification, ...prev].slice(0, 50);
-      });
-      
-      setUnreadCount(prev => prev + 1);
       processNotification(notification).catch(err => console.error("Push process error:", err));
-      
-      if (!isReadingActiveRef.current) {
-        startListeningWindow();
-      }
     };
 
     // 1. PostMessage Listener
     const handleMessage = (event: MessageEvent) => {
+      if (typeof event.data === 'string') {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'PUSH_NOTIFICATION') {
+            handleNotificationData(data.data);
+          } else if (data.type === 'NOTIF_PERMISSION_RESULT') {
+            setNotifPermission(data.permission);
+          } else if (data.type === 'LISTENING_STARTED') {
+            setIsListening(true);
+            setIsMicWindowActive(true);
+            isMicWindowActiveRef.current = true;
+          }
+          return;
+        } catch (e) {}
+      }
+
       if (event.data && event.data.type === 'PUSH_NOTIFICATION') {
         handleNotificationData(event.data.data);
+      }
+      if (event.data && event.data.type === 'NOTIF_PERMISSION_RESULT') {
+        setNotifPermission(event.data.permission);
       }
     };
 
@@ -1153,7 +1187,7 @@ export default function App() {
                   </div>
                   <button 
                     onClick={readHistory}
-                    disabled={unreadCount === 0 || !isCasting}
+                    disabled={unreadCount === 0}
                     className="w-full sm:w-auto px-8 py-4 bg-orange-500 text-slate-950 rounded-2xl font-bold hover:bg-orange-400 transition-all disabled:opacity-20 shadow-xl shadow-orange-500/20 active:scale-95 flex items-center justify-center gap-3"
                   >
                     <Play size={20} fill="currentColor" /> Leggi Ora
@@ -1381,9 +1415,10 @@ export default function App() {
                                 </button>
                                 <button 
                                   onClick={() => removeSchedule(schedule.id)}
-                                  className="text-slate-600 hover:text-red-400 transition-colors"
+                                  className="flex items-center gap-1.5 text-slate-600 hover:text-red-400 transition-colors bg-red-400/5 px-3 py-1.5 rounded-xl border border-red-400/10"
                                 >
-                                  <Trash2 size={16} />
+                                  <Trash2 size={14} />
+                                  <span className="text-[10px] font-bold uppercase tracking-widest">Elimina</span>
                                 </button>
                               </div>
                             </div>
@@ -1481,13 +1516,6 @@ export default function App() {
                           <div className={`absolute top-1 w-4 h-4 rounded-full transition-all duration-300 ${onlyOnHomeWifi ? "right-1 bg-blue-400" : "left-1 bg-slate-400"}`}></div>
                         </button>
                       </div>
-
-                      <div className="flex items-start gap-3 p-3 bg-blue-500/5 rounded-xl border border-blue-500/10">
-                        <Info size={14} className="text-blue-400 shrink-0 mt-0.5" />
-                        <p className="text-[10px] text-slate-400 leading-relaxed uppercase tracking-wider font-medium">
-                          Il browser non può leggere il nome della rete per privacy. L'app verificherà se sei connesso a un WiFi generico come misura di sicurezza.
-                        </p>
-                      </div>
                     </div>
                   </section>
                 </div>
@@ -1576,14 +1604,7 @@ export default function App() {
 
                   </div>
                   
-                  <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center gap-3 p-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl">
-                      <Info size={16} className="text-orange-400 shrink-0" />
-                      <p className="text-[11px] text-orange-200/70 leading-relaxed italic">
-                        Il microfono è sempre in ascolto se i permessi del browser sono attivi. Pronuncia chiaramente le frasi per attivare le funzioni desiderate.
-                      </p>
-                    </div>
-
+                  <div className="mt-8">
                     <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col justify-center">
                       <p className="text-[10px] font-extrabold text-indigo-300 uppercase tracking-widest mb-2 text-center flex items-center justify-center gap-2">
                         <CheckCircle2 size={12} /> URL Webhook

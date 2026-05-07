@@ -3,7 +3,7 @@ import { StyleSheet, View, SafeAreaView, StatusBar, AppState, Platform, Text, To
 import { WebView } from 'react-native-webview';
 import RNAndroidNotificationListener, { RNAndroidNotificationListenerHeadlessJsName } from 'react-native-android-notification-listener';
 import * as Speech from 'expo-speech';
-import GoogleCast, { CastButton } from 'react-native-google-cast';
+import GoogleCast, { CastContext, CastButton } from 'react-native-google-cast';
 
 // L'URL del tuo server (quello che vedi nel browser)
 const APP_URL = 'https://ais-dev-jfh3uddrk4c54zlzxxaaff-393424312334.europe-west2.run.app';
@@ -18,7 +18,16 @@ export default function App() {
     // Listener per le notifiche quando l'app è aperta
     const interval = setInterval(async () => {
       const status = await RNAndroidNotificationListener.getPermissionStatus();
-      setHasPermission(status === 'authorized');
+      const authorized = status === 'authorized';
+      if (authorized !== hasPermission) {
+        setHasPermission(authorized);
+        if (webViewRef.current) {
+          webViewRef.current.postMessage(JSON.stringify({ 
+            type: 'NOTIF_PERMISSION_RESULT', 
+            permission: authorized ? 'granted' : 'denied' 
+          }));
+        }
+      }
     }, 2000);
 
     return () => clearInterval(interval);
@@ -41,7 +50,24 @@ export default function App() {
       
       if (data.type === 'SHOW_CAST_PICKER') {
         console.log('Attivazione Cast Picker Nativo...');
-        GoogleCast.showCastDialog();
+        if (CastContext && typeof CastContext.showCastDialog === 'function') {
+          CastContext.showCastDialog();
+        } else {
+          console.error('CastContext non disponibile o showCastDialog non è una funzione');
+          alert("Funzione Cast non inizializzata. Riprova tra un istante.");
+        }
+      }
+
+      if (data.type === 'REQUEST_NOTIF_PERMISSION') {
+        console.log('Richiesta permessi notifiche...');
+        RNAndroidNotificationListener.requestPermission();
+      }
+
+      if (data.type === 'START_LISTENING') {
+        console.log('Richiesta avvio microfono...');
+        // Segnala al web che l'ascolto è simulato o potremmo usare una libreria nativa qui
+        // Per ora rimandiamo al web che lo stato è cambiato se volessimo
+        webViewRef.current.postMessage(JSON.stringify({ type: 'LISTENING_STARTED', status: 'ready' }));
       }
     } catch (e) {
       console.error('Errore parsing messaggio Web:', e);
@@ -70,11 +96,18 @@ export default function App() {
         domStorageEnabled={true}
         allowsFullscreenVideo={true}
         userAgent="VoxHomeBridgeExpo"
+        mediaPlaybackRequiresUserAction={false}
+        allowsInlineMediaPlayback={true}
+        originWhitelist={['*']}
+        onPermissionRequest={(event) => {
+          console.log('Permission Request:', event.permission);
+          event.grant(event.permission);
+        }}
       />
       
-      {/* Il CastButton deve essere presente nell'albero per far funzionare showCastDialog su Android, lo nascondiamo */}
-      <View style={{ width: 0, height: 0, opacity: 0, position: 'absolute' }}>
-        <CastButton style={{ width: 24, height: 24 }} />
+      {/* Il CastButton deve essere presente nell'albero per far funzionare showCastDialog su Android, lo nascondiamo con dimensione minima */}
+      <View style={{ width: 1, height: 1, opacity: 0, position: 'absolute' }}>
+        <CastButton style={{ width: 1, height: 1 }} />
       </View>
     </SafeAreaView>
   );
