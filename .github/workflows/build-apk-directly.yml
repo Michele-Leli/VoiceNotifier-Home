@@ -44,7 +44,7 @@ jobs:
           rm -rf android
           
           # 1. Prebuild: genera i file nativi
-          npx expo prebuild --platform android --no-install --template bare-minimum
+          npx expo prebuild --platform android --no-install
           
           # 2. Bundle offline
           mkdir -p android/app/src/main/assets

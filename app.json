@@ -29,7 +29,7 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
+        "FOREGROUND_SERVICE_SPECIAL_USE",
         "WAKE_LOCK"
       ]
     },
