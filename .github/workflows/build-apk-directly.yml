@@ -46,12 +46,14 @@ jobs:
           # Li forziamo di nuovo dentro la cartella generata.
           git checkout origin/vault-assets -- "**/*.png" "**/*.jar" || echo "Riapplicazione asset fallita"
 
-          # 3. Permessi e Compilazione
-          chmod +x android/gradlew
-          cd android
+          # 3. Forziamo la versione di Kotlin a 2.0.0 per risolvere l'incompatibilità dei metadati
+          # Cerchiamo build.gradle nella cartella android o android/build.gradle
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle || echo "Non trovato in root"
+          sed -i 's/kotlin_version = .*/kotlin_version = "2.0.0"/' build.gradle || echo "Non trovato in root"
+          
+          # 4. Compilazione con Gradle
           ./gradlew clean
-          # Usiamo release ma con configurazione debug per evitare errori di firma (Keystore)
-          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon --stacktrace
+          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug -PkotlinVersion=2.0.0 --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
