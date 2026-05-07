@@ -52,6 +52,8 @@ jobs:
           # 4. IL TRUCCO FINALE: Inseriamo il flag di soppressione metadata direttamente nel build.gradle
           # Questo evita di passare parametri da riga di comando che Gradle potrebbe non riconoscere
           sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle
+          # Abilitiamo MultiDex per gestire la mole di classi delle librerie Google
+          echo "android.defaultConfig.multiDexEnabled = true" >> build.gradle
           
           # Aggiungiamo la soppressione globale degli errori di versione metadata
           echo "allprojects { tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { kotlinOptions { freeCompilerArgs += [\"-Xskip-metadata-version-check\"] } } }" >> build.gradle
