@@ -32,7 +32,7 @@ jobs:
         env:
           CI: 1
         run: |
-          # 1. Setup Git e Asset (come prima)
+          # 1. Setup Git e Asset
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
           git fetch origin vault-assets
@@ -41,27 +41,25 @@ jobs:
           # 2. Prebuild
           npx expo prebuild --platform android --no-install
 
-          # 3. FORZATURA ESTREMA dei flag di compilazione
+          # 3. Correzione mirata dei file Gradle
           cd android
           
-          # Creiamo/Modifichiamo un file gradle.properties per forzare i flag globali
-          echo "kotlin.code.style=official" >> gradle.properties
-          # Questo flag è quello che risolve il tuo errore specifico:
-          echo "kotlin.incremental=false" >> gradle.properties
-          
-          # Sovrascriviamo la versione di Kotlin in ogni modo possibile
-          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle
-          sed -i 's/android.kotlinVersion=.*/android.kotlinVersion=2.0.0/' gradle.properties
+          # Impostiamo la versione Kotlin nel gradle.properties (senza duplicati)
+          sed -i '/android.kotlinVersion/d' gradle.properties
+          echo "android.kotlinVersion=2.0.0" >> gradle.properties
+          echo "kotlin.mpp.androidSourceSetLayoutVersion=2" >> gradle.properties
 
-          # 4. Compilazione con flag di soppressione errori metadata
+          # 4. IL TRUCCO FINALE: Inseriamo il flag di soppressione metadata direttamente nel build.gradle
+          # Questo evita di passare parametri da riga di comando che Gradle potrebbe non riconoscere
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle
+          
+          # Aggiungiamo la soppressione globale degli errori di versione metadata
+          echo "allprojects { tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { kotlinOptions { freeCompilerArgs += [\"-Xskip-metadata-version-check\"] } } }" >> build.gradle
+
+          # 5. Compilazione
           chmod +x gradlew
           ./gradlew clean
-          ./gradlew assembleRelease \
-            -Pandroid.signingConfig.release=debug \
-            -PkotlinVersion=2.0.0 \
-            -Pkotlin.compiler.execution.strategy="out-process" \
-            -Dkotlin.metadata.version.check=false \
-            --no-daemon
+          ./gradlew assembleRelease -Pandroid.signingConfig.release=debug --no-daemon
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
