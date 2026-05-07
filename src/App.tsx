@@ -610,7 +610,19 @@ export default function App() {
     }, 10000);
   }, [stopVoiceWindow]);
 
+  const processedNotifsRef = useRef<Set<string>>(new Set());
+
   const processNotification = useCallback((notif: Notification, force: boolean = false) => {
+    // Deduplicazione robusta basata su contenuto e finestra temporale
+    const notifKey = `${notif.app}:${notif.message}:${Math.floor(notif.timestamp / 3000)}`;
+    if (processedNotifsRef.current.has(notifKey)) {
+      console.log("App: Notifica già processata (duplicato), salto.");
+      return Promise.resolve();
+    }
+    processedNotifsRef.current.add(notifKey);
+    // Pulizia periodica del set
+    if (processedNotifsRef.current.size > 100) processedNotifsRef.current.clear();
+
     const appNameLC = notif.app.toLowerCase();
     const currentAllowed = allowedAppsRef.current;
     let config = currentAllowed.find(a => a.name.toLowerCase() === appNameLC);
@@ -857,12 +869,8 @@ export default function App() {
     const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
     
     if (isInApp && (window as any).ReactNativeWebView) {
-      if (isListening) {
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'STOP_LISTENING' }));
-      } else {
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'START_LISTENING' }));
-      }
-      return;
+      // Segnala all'app che stiamo provando ad usare il microfono
+      (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'START_LISTENING' }));
     }
 
     if (isListening) {
@@ -949,10 +957,11 @@ export default function App() {
             handleNotificationData(data.data);
           } else if (data.type === 'NOTIF_PERMISSION_RESULT') {
             setNotifPermission(data.permission);
-          } else if (data.type === 'LISTENING_STARTED') {
-            setIsListening(true);
-            setIsMicWindowActive(true);
-            isMicWindowActiveRef.current = true;
+          } else if (data.type === 'LISTENING_STARTED' || data.type === 'MIC_PERMISSION_GRANTED') {
+            // Se l'app ci dà l'ok, proviamo ad avviare la finestra vocale se non era già attiva
+            if (!isMicWindowActiveRef.current) {
+              startListeningWindow();
+            }
           }
           return;
         } catch (e) {}

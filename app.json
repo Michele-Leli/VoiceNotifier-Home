@@ -25,7 +25,6 @@
         "backgroundColor": "#020617"
       },
       "package": "com.miky.voxhome.voicenotifier",
-      "largeHeap": true,
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "FOREGROUND_SERVICE",

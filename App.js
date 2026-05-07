@@ -64,10 +64,10 @@ export default function App() {
       }
 
       if (data.type === 'START_LISTENING') {
-        console.log('Richiesta avvio microfono...');
-        // Segnala al web che l'ascolto è simulato o potremmo usare una libreria nativa qui
-        // Per ora rimandiamo al web che lo stato è cambiato se volessimo
-        webViewRef.current.postMessage(JSON.stringify({ type: 'LISTENING_STARTED', status: 'ready' }));
+        console.log('Richiesta avvio microfono (App)...');
+        // Non intercettiamo più pesantemente, lasciamo che il web provi ad usare il microfono
+        // Inviamo solo un segnale di conferma permessi
+        webViewRef.current.postMessage(JSON.stringify({ type: 'MIC_PERMISSION_GRANTED' }));
       }
     } catch (e) {
       console.error('Errore parsing messaggio Web:', e);
