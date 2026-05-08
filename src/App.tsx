@@ -445,11 +445,12 @@ export default function App() {
   const speakLocally = (text: string): Promise<void> => {
     return new Promise((resolve) => {
       if (isInApp && (window as any).ReactNativeWebView) {
-        addLog("SND: SPEAK");
+        addLog("SND: SPEAK " + text.substring(0, 10));
         console.log("Native: Richiedo riproduzione vocale via bridge (" + text + ")");
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({ 
           type: 'SPEAK', 
           text: text,
+          message: text, // Alias per compatibilità
           lang: voiceLang,
           volume: volume / 100
         }));
@@ -1048,22 +1049,28 @@ export default function App() {
         setNotifPermission(data.permission);
       } else if (data.type === 'READING_STATE_CHANGED') {
         console.log("Native: Reading state changed:", data.enabled);
+        addLog(`READ: ${data.enabled}`);
         setIsReadingActive(!!data.enabled);
       } else if (data.type === 'CAST_STATE_CHANGED') {
         console.log("Cast: Stato cambiato da app nativa:", data);
+        addLog(`CAST: ${data.isCasting} ${data.deviceName || ''}`);
         setIsCasting(!!data.isCasting);
         setDeviceName(data.deviceName || null);
       } else if (data.type === 'STATE_UPDATE') {
         // Risposta a GET_STATES
         console.log("App: Ricevuto aggiornamento stati completi:", data);
+        addLog(`SYNC: Cast=${data.isCasting} Read=${data.isReadingActive}`);
         if (data.isCasting !== undefined) setIsCasting(!!data.isCasting);
         if (data.deviceName !== undefined) setDeviceName(data.deviceName);
         if (data.isReadingActive !== undefined) setIsReadingActive(!!data.isReadingActive);
       } else if (data.type === 'LISTENING_STARTED' || data.type === 'MIC_PERMISSION_GRANTED') {
+        addLog("MIC: ON");
         // Se l'app ci dà l'ok, proviamo ad avviare la finestra vocale se non era già attiva
         if (!isMicWindowActiveRef.current) {
           startListeningWindow();
         }
+      } else {
+        addLog(`UNK: ${data.type}`);
       }
     };
 
@@ -1380,6 +1387,26 @@ export default function App() {
                           className="px-4 py-2 bg-slate-800 rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700"
                         >
                           Sync Stati
+                        </button>
+                        <button 
+                          onClick={() => {
+                            addLog("FORCE: CAST ON");
+                            setIsCasting(true);
+                            setDeviceName("Debug Device");
+                          }}
+                          className="px-4 py-2 bg-slate-800 rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700"
+                        >
+                          Force Cast
+                        </button>
+                        <button 
+                          onClick={() => {
+                            addLog("FORCE: CAST OFF");
+                            setIsCasting(false);
+                            setDeviceName(null);
+                          }}
+                          className="px-4 py-2 bg-slate-800 rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700"
+                        >
+                          Reset Cast
                         </button>
                         <button 
                           onClick={() => setBridgeLogs([])}

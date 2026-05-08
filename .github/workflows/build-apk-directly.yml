@@ -35,32 +35,38 @@ jobs:
           # 1. Setup Git e Asset
           git config --global user.email "action@github.com"
           git config --global user.name "GitHub Action"
-          git fetch origin vault-assets
-          git checkout origin/vault-assets -- "assets/*.png" "**/*.jar" || echo "Asset non trovati"
+          
+          # Gestione fetch sicura
+          git fetch origin vault-assets || echo "Branch vault-assets non trovato, salto il fetch"
+          git checkout origin/vault-assets -- "assets/*.png" "**/*.jar" 2>/dev/null || echo "Asset non trovati o branch non esistente"
 
           # 2. Prebuild
-          npx expo prebuild --platform android --no-install
+          # Usiamo --no-install per velocizzare, dato che abbiamo già fatto npm install
+          npx expo prebuild --platform android --no-install || echo "Prebuild ha riscontrato avvisi (proseguo comunque)"
 
           # 3. CORREZIONE CHIRURGICA
           cd android
           
           # Cambiamo la versione Kotlin nel file ROOT (build.gradle)
-          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle
+          # Proviamo diversi pattern per sed
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle || true
           
           # Cambiamo la versione Kotlin nelle PROPRIETÀ
-          sed -i 's/android.kotlinVersion=.*/android.kotlinVersion=2.0.0/' gradle.properties
-          # Se la riga non esiste, la aggiungiamo in modo pulito
-          grep -q "android.kotlinVersion" gradle.properties || echo "android.kotlinVersion=2.0.0" >> gradle.properties
+          if [ -f gradle.properties ]; then
+            sed -i 's/android.kotlinVersion=.*/android.kotlinVersion=2.0.0/' gradle.properties || true
+            grep -q "android.kotlinVersion" gradle.properties || echo "android.kotlinVersion=2.0.0" >> gradle.properties
+          fi
 
           # 4. IL TRUCCO PER I METADATI (Sintassi corretta per la root)
-          # Invece di aggiungere blocchi 'android', usiamo questo che è universale:
+          # Rimuoviamo eventuali duplicati prima di aggiungere
+          grep -v "Xskip-metadata-version-check" build.gradle > build.gradle.tmp && mv build.gradle.tmp build.gradle
           echo "subprojects { tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { kotlinOptions { freeCompilerArgs += ['-Xskip-metadata-version-check'] } } }" >> build.gradle
           
-          # 5. GESTIONE KEYSTORE PERSISTENTE (Per evitare di dover disinstallare l'app)
+          # 5. GESTIONE KEYSTORE PERSISTENTE
           if [ -f app/debug.keystore ]; then
             echo "Uso il keystore esistente per mantenere la stessa firma."
           else
-            echo "Generazione nuovo keystore (Attenzione: questo richiederà la disinstallazione delle versioni precedenti)"
+            echo "Generazione nuovo keystore"
             keytool -genkey -v -keystore app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 

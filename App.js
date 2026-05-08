@@ -15,6 +15,32 @@ export default function App() {
   useEffect(() => {
     checkPermission();
     
+    // Listener per Cast State
+    const castSessionManager = GoogleCast.getSessionManager();
+    const subStarted = castSessionManager.onSessionStarted((session) => {
+      console.log('Native Cast: Sessione avviata');
+      webViewRef.current?.postMessage(JSON.stringify({ 
+        type: 'CAST_STATE_CHANGED', 
+        isCasting: true, 
+        deviceName: session.device?.friendlyName || 'Chromecast' 
+      }));
+    });
+    const subResumed = castSessionManager.onSessionResumed((session) => {
+      console.log('Native Cast: Sessione ripresa');
+      webViewRef.current?.postMessage(JSON.stringify({ 
+        type: 'CAST_STATE_CHANGED', 
+        isCasting: true, 
+        deviceName: session.device?.friendlyName || 'Chromecast' 
+      }));
+    });
+    const subEnded = castSessionManager.onSessionEnded(() => {
+      console.log('Native Cast: Sessione terminata');
+      webViewRef.current?.postMessage(JSON.stringify({ 
+        type: 'CAST_STATE_CHANGED', 
+        isCasting: false 
+      }));
+    });
+
     // Listener per le notifiche quando l'app è aperta
     const interval = setInterval(async () => {
       const status = await RNAndroidNotificationListener.getPermissionStatus();
@@ -30,7 +56,12 @@ export default function App() {
       }
     }, 2000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      subStarted.remove();
+      subResumed.remove();
+      subEnded.remove();
+    };
   }, []);
 
   const checkPermission = async () => {
@@ -68,6 +99,36 @@ export default function App() {
         // Non intercettiamo più pesantemente, lasciamo che il web provi ad usare il microfono
         // Inviamo solo un segnale di conferma permessi
         webViewRef.current.postMessage(JSON.stringify({ type: 'MIC_PERMISSION_GRANTED' }));
+      }
+
+      if (data.type === 'SPEAK') {
+        const text = data.text || data.message;
+        console.log('Native Speech:', text);
+        if (text) {
+          Speech.speak(text, {
+            language: data.lang || 'it-IT',
+            pitch: 1.0,
+            rate: 1.0,
+            volume: data.volume || 1.0
+          });
+        }
+      }
+
+      if (data.type === 'SET_READING_STATE') {
+        console.log('Native Reading State Set:', data.enabled);
+        // Possiamo memorizzare questo stato se necessario per sync futuri
+      }
+
+      if (data.type === 'GET_STATES') {
+        console.log('Native Handshake: Inviando stati attuali...');
+        const status = RNAndroidNotificationListener.getPermissionStatus().then(status => {
+           webViewRef.current.postMessage(JSON.stringify({ 
+            type: 'STATE_UPDATE', 
+            isCasting: false, // Da espandere se possibile monitorare lo stato cast
+            isReadingActive: true, // Default o da state
+            permission: status === 'authorized' ? 'granted' : 'denied'
+          }));
+        });
       }
     } catch (e) {
       console.error('Errore parsing messaggio Web:', e);

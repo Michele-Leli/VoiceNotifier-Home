@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -24,6 +24,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",
     "expo": "~51.0.28",
+    "expo-build-properties": "^55.0.13",
     "expo-constants": "~16.0.2",
     "expo-device": "~6.0.2",
     "expo-linking": "~6.3.1",
