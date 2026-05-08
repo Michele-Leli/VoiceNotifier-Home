@@ -101,7 +101,7 @@ export default function App() {
   );
 
   const requestNotifPermission = async () => {
-    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
     if (isInApp && (window as any).ReactNativeWebView) {
       (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'REQUEST_NOTIF_PERMISSION' }));
       return "default"; // Will be updated by native side
@@ -303,7 +303,7 @@ export default function App() {
     localStorage.setItem("voiceNotifier_active", isReadingActive.toString());
 
     // Sincronizza lo stato con la parte nativa Android
-    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
     if (isInApp && (window as any).ReactNativeWebView) {
       (window as any).ReactNativeWebView.postMessage(JSON.stringify({ 
         type: 'SET_READING_STATE', 
@@ -319,7 +319,7 @@ export default function App() {
 
   // Richiesta stati iniziali all'avvio (Handshake con Native)
   useEffect(() => {
-    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
     if (isInApp && (window as any).ReactNativeWebView) {
       console.log("App: Handshake con Native...");
       // Piccola pausa per caricamento bridge
@@ -417,13 +417,15 @@ export default function App() {
 
   const speakLocally = (text: string): Promise<void> => {
     return new Promise((resolve) => {
-      const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+      const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
       
       if (isInApp && (window as any).ReactNativeWebView) {
-        console.log("Native: Richiedo riproduzione vocale via bridge");
+        console.log("Native: Richiedo riproduzione vocale via bridge (" + text + ")");
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({ 
           type: 'SPEAK', 
-          text: text 
+          text: text,
+          lang: voiceLang,
+          volume: volume / 100
         }));
         // Per ora risolviamo subito, in futuro potremmo attendere evento 'SPEAK_DONE'
         setTimeout(resolve, 2000);
@@ -901,7 +903,7 @@ export default function App() {
   }, []); // Only setup once
 
   const toggleListening = () => {
-    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
     
     if (isInApp && (window as any).ReactNativeWebView) {
       // Segnala all'app che stiamo provando ad usare il microfono
@@ -1114,7 +1116,7 @@ export default function App() {
   }, []);
 
   const handleCast = () => {
-    const isInApp = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
     
     // Se siamo nell'app mobile, usiamo il bridge nativo
     if (isInApp) {
@@ -1175,7 +1177,7 @@ export default function App() {
       timestamp: Date.now()
     };
     if (isCasting) {
-      queueReading(testNotif).catch(err => console.error("Voice test queue error:", err));
+      queueReading(testNotif, true).catch(err => console.error("Voice test queue error:", err));
     } else {
       speakLocally(testNotif.message).catch(err => console.error("Voice test speak error:", err));
     }
