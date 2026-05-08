@@ -52,6 +52,23 @@ interface Schedule {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<"home" | "settings">("home");
+  const [bridgeLogs, setBridgeLogs] = useState<string[]>([]);
+  const [isInApp, setIsInApp] = useState(false);
+
+  useEffect(() => {
+    const checkInApp = () => {
+      const isUA = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
+      const isWV = typeof window !== 'undefined' && (window as any).ReactNativeWebView;
+      setIsInApp(!!(isUA || isWV));
+    };
+    checkInApp();
+    const timer = setInterval(checkInApp, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const addLog = (msg: string) => {
+    setBridgeLogs(prev => [msg, ...prev].slice(0, 20));
+  };
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isReadingActive, setIsReadingActive] = useState(() => localStorage.getItem("voiceNotifier_active") === "true");
@@ -101,8 +118,8 @@ export default function App() {
   );
 
   const requestNotifPermission = async () => {
-    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
     if (isInApp && (window as any).ReactNativeWebView) {
+      addLog("SND: REQ_NOTIF_PERM");
       (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'REQUEST_NOTIF_PERMISSION' }));
       return "default"; // Will be updated by native side
     }
@@ -303,8 +320,8 @@ export default function App() {
     localStorage.setItem("voiceNotifier_active", isReadingActive.toString());
 
     // Sincronizza lo stato con la parte nativa Android
-    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
     if (isInApp && (window as any).ReactNativeWebView) {
+      addLog("SND: SET_READ_STATE " + isReadingActive);
       (window as any).ReactNativeWebView.postMessage(JSON.stringify({ 
         type: 'SET_READING_STATE', 
         enabled: isReadingActive 
@@ -319,11 +336,11 @@ export default function App() {
 
   // Richiesta stati iniziali all'avvio (Handshake con Native)
   useEffect(() => {
-    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
     if (isInApp) {
       console.log("App: Tentativo Handshake con Native...");
       const sendHandshake = () => {
         if ((window as any).ReactNativeWebView) {
+          addLog("SND: GET_STATES");
           console.log("App: Invio GET_STATES a Native");
           (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'GET_STATES' }));
         }
@@ -424,9 +441,8 @@ export default function App() {
 
   const speakLocally = (text: string): Promise<void> => {
     return new Promise((resolve) => {
-      const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
-      
       if (isInApp && (window as any).ReactNativeWebView) {
+        addLog("SND: SPEAK");
         console.log("Native: Richiedo riproduzione vocale via bridge (" + text + ")");
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({ 
           type: 'SPEAK', 
@@ -918,9 +934,8 @@ export default function App() {
   }, []); // Only setup once
 
   const toggleListening = () => {
-    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
-    
     if (isInApp && (window as any).ReactNativeWebView) {
+      addLog("SND: START_LISTENING");
       // Segnala all'app che stiamo provando ad usare il microfono
       (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'START_LISTENING' }));
     }
@@ -1001,22 +1016,27 @@ export default function App() {
     };
 
     // 1. PostMessage/Native Bridge Listener
-    const handleMessage = (event: MessageEvent) => {
+    const handleMessage = (event: any) => {
       let data;
       
-      // Handle both string and object data (WebView vs ServiceWorker)
-      if (typeof event.data === 'string') {
+      // Handle different ways data arrives in various WebViews
+      const rawData = event.data || (event.nativeEvent && event.nativeEvent.data);
+      
+      if (typeof rawData === 'string') {
         try {
-          data = JSON.parse(event.data);
+          data = JSON.parse(rawData);
         } catch (e) {
+          // If it's a string but not JSON, it might be a direct command
+          addLog("STR: " + rawData.substring(0, 50));
           return;
         }
       } else {
-        data = event.data;
+        data = rawData;
       }
 
       if (!data || !data.type) return;
 
+      addLog(`RCV: ${data.type}`);
       console.log("App: Ricevuto messaggio via Bridge:", data.type, data);
 
       if (data.type === 'PUSH_NOTIFICATION') {
@@ -1046,6 +1066,7 @@ export default function App() {
 
     // 2. Register Listeners (Web, Document and SW)
     window.addEventListener('message', handleMessage);
+    (window as any).onMessage = handleMessage; // Alias per certi bridge
     document.addEventListener('message', handleMessage as any); // Importante per certi WebView
     
     const bc = new BroadcastChannel('voxhome_notifications');
@@ -1087,7 +1108,6 @@ export default function App() {
           (window as any).cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
           (event: any) => {
             // Se siamo nell'app nativa, ignoriamo gli stati del SDK browser per evitare conflitti
-            const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
             if (isInApp) return;
 
             switch (event.sessionState) {
@@ -1144,11 +1164,10 @@ export default function App() {
   }, []);
 
   const handleCast = () => {
-    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
-    
     // Se siamo nell'app mobile, usiamo il bridge nativo
     if (isInApp) {
       if ((window as any).ReactNativeWebView) {
+        addLog("SND: SHOW_CAST_PICKER");
         console.log("Cast: Richiedo picker nativo via WebView");
         (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'SHOW_CAST_PICKER' }));
         return;
@@ -1328,6 +1347,47 @@ export default function App() {
                 className="lg:col-span-12 space-y-6"
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Debug Native Bridge */}
+                  {isInApp && (
+                    <section className="glass-card rounded-3xl p-6 glow-red col-span-1 md:col-span-2">
+                       <h3 className="text-lg md:text-xl font-bold mb-4 flex items-center gap-2 text-white">
+                        <Activity size={20} className="text-red-400" />
+                        Android Native Bridge Debug
+                      </h3>
+                      <div className="bg-slate-900/80 rounded-2xl p-4 h-48 overflow-y-auto font-mono text-[10px] space-y-1">
+                        {bridgeLogs.length === 0 ? (
+                          <div className="text-slate-700">In attesa di traffico bridge...</div>
+                        ) : (
+                          bridgeLogs.map((log, i) => (
+                            <div key={i} className="flex gap-2">
+                              <span className="text-slate-600">[{new Date().toLocaleTimeString()}]</span>
+                              <span className="text-cyan-500 font-bold">{log}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="mt-4 flex gap-2">
+                        <button 
+                          onClick={() => {
+                            if ((window as any).ReactNativeWebView) {
+                              (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'GET_STATES' }));
+                              addLog("SND: GET_STATES");
+                            }
+                          }}
+                          className="px-4 py-2 bg-slate-800 rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700"
+                        >
+                          Sync Stati
+                        </button>
+                        <button 
+                          onClick={() => setBridgeLogs([])}
+                          className="px-4 py-2 bg-slate-800 rounded-xl text-[10px] font-bold uppercase hover:bg-slate-700"
+                        >
+                          Pulisci Log
+                        </button>
+                      </div>
+                    </section>
+                  )}
+
                   {/* App Triggers */}
                   <section className="glass-card rounded-3xl p-6 glow-cyan">
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 md:mb-6 gap-3">
