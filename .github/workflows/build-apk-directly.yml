@@ -40,34 +40,37 @@ jobs:
           git fetch origin vault-assets || echo "Branch vault-assets non trovato, salto il fetch"
           git checkout origin/vault-assets -- "assets/*.png" "**/*.jar" 2>/dev/null || echo "Asset non trovati o branch non esistente"
 
-          # 2. Prebuild
-          # Usiamo --no-install per velocizzare, dato che abbiamo già fatto npm install
-          npx expo prebuild --platform android --no-install || echo "Prebuild ha riscontrato avvisi (proseguo comunque)"
+          # 2. Prebuild (Pulizia completa per evitare conflitti con folder android esistente)
+          # Salviamo il keystore per sicurezza prima di piallare
+          cp android/app/debug.keystore ./temp_debug.keystore || echo "Keystore non trovato in android/app"
+          
+          # Rigeneriamo da zero il folder android basandoci su app.json aggiornato
+          rm -rf android
+          npx expo prebuild --platform android --no-install --no-interactive
+          
+          # Ripristiniamo il keystore originale
+          mkdir -p android/app
+          cp ./temp_debug.keystore android/app/debug.keystore || echo "Impossibile ripristinare keystore"
 
-          # 3. CORREZIONE CHIRURGICA
+          # 3. CORREZIONE CHIRURGICA E PATCH
           cd android
           
-          # Cambiamo la versione Kotlin nel file ROOT (build.gradle)
-          # Proviamo diversi pattern per sed
-          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.0"/' build.gradle || true
-          
-          # Cambiamo la versione Kotlin nelle PROPRIETÀ
+          # Forziamo Kotlin 2.0.21 ovunque (allineato con il plugin expo custom)
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "2.0.21"/' build.gradle || true
           if [ -f gradle.properties ]; then
-            sed -i 's/android.kotlinVersion=.*/android.kotlinVersion=2.0.0/' gradle.properties || true
-            grep -q "android.kotlinVersion" gradle.properties || echo "android.kotlinVersion=2.0.0" >> gradle.properties
+            sed -i 's/android.kotlinVersion=.*/android.kotlinVersion=2.0.21/' gradle.properties || true
+            echo "android.kotlinVersion=2.0.21" >> gradle.properties
           fi
 
-          # 4. IL TRUCCO PER I METADATI (Sintassi corretta per la root)
-          # Rimuoviamo eventuali duplicati prima di aggiungere
-          grep -v "Xskip-metadata-version-check" build.gradle > build.gradle.tmp && mv build.gradle.tmp build.gradle
+          # Patch per i metadati Kotlin (necessario per molti pacchetti React Native con Kotlin 2.0)
           echo "subprojects { tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { kotlinOptions { freeCompilerArgs += ['-Xskip-metadata-version-check'] } } }" >> build.gradle
           
-          # 5. GESTIONE KEYSTORE PERSISTENTE
-          if [ -f app/debug.keystore ]; then
-            echo "Uso il keystore esistente per mantenere la stessa firma."
-          else
-            echo "Generazione nuovo keystore"
+          # 5. VERIFICA KEYSTORE
+          if [ ! -f app/debug.keystore ]; then
+            echo "Generazione nuovo keystore di emergenza"
             keytool -genkey -v -keystore app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          else
+            echo "Keystore presente e pronto."
           fi
 
           # 7. Compilazione
