@@ -54,12 +54,15 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<"home" | "settings">("home");
   const [bridgeLogs, setBridgeLogs] = useState<string[]>([]);
   const [isInApp, setIsInApp] = useState(false);
+  const isInAppRef = useRef(false);
 
   useEffect(() => {
     const checkInApp = () => {
       const isUA = typeof navigator !== 'undefined' && navigator.userAgent.includes('VoxHomeBridgeExpo');
       const isWV = typeof window !== 'undefined' && (window as any).ReactNativeWebView;
-      setIsInApp(!!(isUA || isWV));
+      const result = !!(isUA || isWV);
+      setIsInApp(result);
+      isInAppRef.current = result;
     };
     checkInApp();
     const timer = setInterval(checkInApp, 2000);
@@ -1108,7 +1111,7 @@ export default function App() {
           (window as any).cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
           (event: any) => {
             // Se siamo nell'app nativa, ignoriamo gli stati del SDK browser per evitare conflitti
-            if (isInApp) return;
+            if (isInAppRef.current) return;
 
             switch (event.sessionState) {
               case (window as any).cast.framework.SessionState.SESSION_STARTED:
