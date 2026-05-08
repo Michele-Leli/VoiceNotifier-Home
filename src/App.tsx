@@ -320,12 +320,19 @@ export default function App() {
   // Richiesta stati iniziali all'avvio (Handshake con Native)
   useEffect(() => {
     const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
-    if (isInApp && (window as any).ReactNativeWebView) {
-      console.log("App: Handshake con Native...");
-      // Piccola pausa per caricamento bridge
-      setTimeout(() => {
-        (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'GET_STATES' }));
-      }, 500);
+    if (isInApp) {
+      console.log("App: Tentativo Handshake con Native...");
+      const sendHandshake = () => {
+        if ((window as any).ReactNativeWebView) {
+          console.log("App: Invio GET_STATES a Native");
+          (window as any).ReactNativeWebView.postMessage(JSON.stringify({ type: 'GET_STATES' }));
+        }
+      };
+      
+      // Tentativi multipli all'avvio per essere sicuri che il bridge sia pronto
+      setTimeout(sendHandshake, 500);
+      setTimeout(sendHandshake, 2000);
+      setTimeout(sendHandshake, 5000);
     }
   }, []);
 
@@ -476,6 +483,14 @@ export default function App() {
 
   const readOutLoud = useCallback((notif: Notification): Promise<void> => {
     const textToRead = `Notifica da ${notif.app}. ${notif.title ? notif.title + ' dice: ' : ''} ${notif.message}`;
+    const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
+
+    // Se siamo nell'app mobile, deleghiamo SEMPRE alla parte nativa
+    // La parte nativa sa se deve riprodurre via TTS locale o via Cast
+    if (isInApp && (window as any).ReactNativeWebView) {
+      console.log("Native: Richiedo lettura via bridge per:", notif.app);
+      return speakLocally(textToRead);
+    }
 
     if (!castSessionRef.current || !isCastingRef.current) {
       console.log("Lettura locale avviata per:", notif.app);
@@ -985,47 +1000,54 @@ export default function App() {
       processNotification(notification).catch(err => console.error("Push process error:", err));
     };
 
-    // 1. PostMessage Listener
+    // 1. PostMessage/Native Bridge Listener
     const handleMessage = (event: MessageEvent) => {
+      let data;
+      
+      // Handle both string and object data (WebView vs ServiceWorker)
       if (typeof event.data === 'string') {
         try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'PUSH_NOTIFICATION') {
-            handleNotificationData(data.data);
-          } else if (data.type === 'NOTIF_PERMISSION_RESULT') {
-            setNotifPermission(data.permission);
-          } else if (data.type === 'READING_STATE_CHANGED') {
-            console.log("Native: Reading state changed:", data.enabled);
-            setIsReadingActive(!!data.enabled);
-          } else if (data.type === 'CAST_STATE_CHANGED') {
-            console.log("Cast: Stato cambiato da app nativa:", data);
-            setIsCasting(!!data.isCasting);
-            setDeviceName(data.deviceName || null);
-          } else if (data.type === 'STATE_UPDATE') {
-            // Risposta a GET_STATES
-            console.log("App: Ricevuto aggiornamento stati completi:", data);
-            if (data.isCasting !== undefined) setIsCasting(!!data.isCasting);
-            if (data.deviceName !== undefined) setDeviceName(data.deviceName);
-            if (data.isReadingActive !== undefined) setIsReadingActive(!!data.isReadingActive);
-          } else if (data.type === 'LISTENING_STARTED' || data.type === 'MIC_PERMISSION_GRANTED') {
-            // Se l'app ci dà l'ok, proviamo ad avviare la finestra vocale se non era già attiva
-            if (!isMicWindowActiveRef.current) {
-              startListeningWindow();
-            }
-          }
+          data = JSON.parse(event.data);
+        } catch (e) {
           return;
-        } catch (e) {}
+        }
+      } else {
+        data = event.data;
       }
 
-      if (event.data && event.data.type === 'PUSH_NOTIFICATION') {
-        handleNotificationData(event.data.data);
-      }
-      if (event.data && event.data.type === 'NOTIF_PERMISSION_RESULT') {
-        setNotifPermission(event.data.permission);
+      if (!data || !data.type) return;
+
+      console.log("App: Ricevuto messaggio via Bridge:", data.type, data);
+
+      if (data.type === 'PUSH_NOTIFICATION') {
+        handleNotificationData(data.data);
+      } else if (data.type === 'NOTIF_PERMISSION_RESULT') {
+        setNotifPermission(data.permission);
+      } else if (data.type === 'READING_STATE_CHANGED') {
+        console.log("Native: Reading state changed:", data.enabled);
+        setIsReadingActive(!!data.enabled);
+      } else if (data.type === 'CAST_STATE_CHANGED') {
+        console.log("Cast: Stato cambiato da app nativa:", data);
+        setIsCasting(!!data.isCasting);
+        setDeviceName(data.deviceName || null);
+      } else if (data.type === 'STATE_UPDATE') {
+        // Risposta a GET_STATES
+        console.log("App: Ricevuto aggiornamento stati completi:", data);
+        if (data.isCasting !== undefined) setIsCasting(!!data.isCasting);
+        if (data.deviceName !== undefined) setDeviceName(data.deviceName);
+        if (data.isReadingActive !== undefined) setIsReadingActive(!!data.isReadingActive);
+      } else if (data.type === 'LISTENING_STARTED' || data.type === 'MIC_PERMISSION_GRANTED') {
+        // Se l'app ci dà l'ok, proviamo ad avviare la finestra vocale se non era già attiva
+        if (!isMicWindowActiveRef.current) {
+          startListeningWindow();
+        }
       }
     };
 
-    // 2. BroadcastChannel Listener
+    // 2. Register Listeners (Web, Document and SW)
+    window.addEventListener('message', handleMessage);
+    document.addEventListener('message', handleMessage as any); // Importante per certi WebView
+    
     const bc = new BroadcastChannel('voxhome_notifications');
     bc.onmessage = (event) => {
       if (event.data && event.data.type === 'PUSH_NOTIFICATION') {
@@ -1038,6 +1060,8 @@ export default function App() {
     }
 
     return () => {
+      window.removeEventListener('message', handleMessage);
+      document.removeEventListener('message', handleMessage as any);
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.removeEventListener('message', handleMessage);
       }
@@ -1062,6 +1086,10 @@ export default function App() {
         castContext.addEventListener(
           (window as any).cast.framework.CastContextEventType.SESSION_STATE_CHANGED,
           (event: any) => {
+            // Se siamo nell'app nativa, ignoriamo gli stati del SDK browser per evitare conflitti
+            const isInApp = typeof navigator !== 'undefined' && (navigator.userAgent.includes('VoxHomeBridgeExpo') || (window as any).ReactNativeWebView);
+            if (isInApp) return;
+
             switch (event.sessionState) {
               case (window as any).cast.framework.SessionState.SESSION_STARTED:
               case (window as any).cast.framework.SessionState.SESSION_RESUMED:
@@ -1703,11 +1731,11 @@ export default function App() {
 
         <div 
           onClick={handleCast}
-          className={`p-3 cursor-pointer transition-all rounded-2xl relative flex items-center justify-center ${isCasting ? "text-cyan-400 bg-cyan-500/20 border border-cyan-500/30" : "text-slate-500 hover:text-cyan-400"}`}
-          style={isCasting ? { boxShadow: '0 0 20px rgba(34, 211, 238, 0.4)' } : {}}
+          className={`p-3 cursor-pointer transition-all rounded-2xl relative flex items-center justify-center ${isCasting ? "text-cyan-400 bg-cyan-500/30 border border-cyan-400/50 scale-110" : "text-slate-500 hover:text-cyan-400"}`}
+          style={isCasting ? { boxShadow: '0 0 25px rgba(34, 211, 238, 0.6)' } : {}}
         >
-          <Cast size={24} className={isCasting ? "animate-pulse" : ""} />
-          {isCasting && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-cyan-400 rounded-full border border-[#020617] shadow-[0_0_12px_#22d3ee]"></div>}
+          <Cast size={24} className={isCasting ? "animate-pulse" : ""} strokeWidth={isCasting ? 2.5 : 2} />
+          {isCasting && <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-cyan-300 rounded-full border border-[#020617] shadow-[0_0_12px_#22d3ee]"></div>}
         </div>
       </aside>
 
