@@ -4,6 +4,7 @@ import { WebView } from 'react-native-webview';
 import RNAndroidNotificationListener, { RNAndroidNotificationListenerHeadlessJsName } from 'react-native-android-notification-listener';
 import * as Speech from 'expo-speech';
 import GoogleCast, { CastContext, CastButton } from 'react-native-google-cast';
+import { Audio } from 'expo-av';
 
 // L'URL del tuo server (quello che vedi nel browser)
 const APP_URL = 'https://ais-dev-jfh3uddrk4c54zlzxxaaff-393424312334.europe-west2.run.app';
@@ -173,6 +174,37 @@ export default function App() {
     </SafeAreaView>
   );
 }
+
+const leggiNotifica = async (testo) => {
+  try {
+    // 1. Forza il sistema audio a svegliarsi
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      staysActiveInBackground: true,
+      interruptionModeAndroid: 1,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
+
+    // 2. Controlla se sta già parlando e ferma tutto
+    const isSpeaking = await Speech.isSpeakingAsync();
+    if (isSpeaking) {
+      await Speech.stop();
+    }
+
+    // 3. Parla!
+    console.log("Tentativo di lettura: ", testo);
+    Speech.speak(testo, {
+      language: 'it-IT',
+      pitch: 1.0,
+      rate: 1.0,
+      onStart: () => console.log("Lettura iniziata"),
+      onError: (e) => console.log("Errore lettura: ", e),
+    });
+  } catch (error) {
+    console.error("Errore nel flusso audio: ", error);
+  }
+};
 
 const styles = StyleSheet.create({
   container: {
