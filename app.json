@@ -35,6 +35,14 @@
         "MODIFY_AUDIO_SETTINGS",
         "RECORD_AUDIO"
       ],
+      "intentFilters": [
+        {
+          "action": "android.intent.action.MAIN"
+        }
+      ],
+      "queryPatterns": [
+        "android.intent.action.TTS_SERVICE"
+      ],
       "usesCleartextTraffic": true
     },
     "extra": {
