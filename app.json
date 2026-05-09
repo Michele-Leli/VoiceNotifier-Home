@@ -30,7 +30,10 @@
         "RECEIVE_BOOT_COMPLETED",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_SPECIAL_USE",
-        "WAKE_LOCK"
+        "WAKE_LOCK",
+        "INTERNET",
+        "MODIFY_AUDIO_SETTINGS",
+        "RECORD_AUDIO"
       ]
     },
     "extra": {
