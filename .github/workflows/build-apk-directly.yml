@@ -26,7 +26,9 @@ jobs:
       - name: Install dependencies
         run: |
           npm install --legacy-peer-deps
-          npm install expo-av expo-build-properties --legacy-peer-deps
+          # npx expo install sceglie le versioni corrette compatibili con la tua versione di Expo
+          npx expo install expo-av expo-speech expo-notifications -- --legacy-peer-deps
+          npm install expo-build-properties --legacy-peer-deps
 
       - name: Build Android APK
         env:
