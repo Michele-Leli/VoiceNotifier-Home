@@ -34,7 +34,8 @@
         "INTERNET",
         "MODIFY_AUDIO_SETTINGS",
         "RECORD_AUDIO"
-      ]
+      ],
+      "usesCleartextTraffic": true
     },
     "extra": {
       "eas": {
