@@ -56,12 +56,15 @@ jobs:
           # Forza l'esclusione di versioni GMS che richiedono login obbligatorio
           echo "rootProject.ext { excludeAppInvite = true; excludeAds = true }" >> build.gradle
 
-      - name: Generate Keystore
+      - name: 5. GESTIONE KEYSTORE E BUILD
         run: |
           cd android
-          # Elimina vecchi file per evitare errori di formato
+          
+          # Creiamo la cartella se non esiste e puliamo vecchi file
+          mkdir -p app
           rm -f app/debug.keystore
-          # Genera il keystore dentro la cartella app
+
+          # Generiamo il keystore DIRETTAMENTE dove Gradle lo cerca di default
           keytool -genkey -v \
             -keystore app/debug.keystore \
             -storepass android \
@@ -74,18 +77,10 @@ jobs:
             -dname "CN=Android Debug,O=Android,C=US" \
             -noprompt
 
-      - name: Build Android Release
-        run: |
-          cd android
+          # Lanciamo la build pulita
           chmod +x gradlew
           ./gradlew clean
-          # Passiamo i parametri di firma per garantire che l'APK sia sempre identico
-          ./gradlew assembleRelease \
-            -Pandroid.injected.signing.store.file=debug.keystore \
-            -Pandroid.injected.signing.store.password=android \
-            -Pandroid.injected.signing.key.alias=androiddebugkey \
-            -Pandroid.injected.signing.key.password=android \
-            --no-daemon
+          ./gradlew assembleRelease --no-daemon
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
