@@ -54,13 +54,15 @@ jobs:
           # Forza l'esclusione di versioni GMS che richiedono login obbligatorio
           echo "rootProject.ext { excludeAppInvite = true; excludeAds = true }" >> build.gradle
 
-          # 5. GESTIONE KEYSTORE PERSISTENTE (Versione Corretta)
-          # Cancelliamo quello vecchio per evitare il conflitto di formato
-          rm -f android/app/debug.keystore
+          # 5. GESTIONE KEYSTORE PERSISTENTE
+          # Siamo già dentro la cartella 'android' grazie al comando 'cd android' precedente
+          
+          # Ci assicuriamo di essere nella cartella corretta per Gradle
+          rm -f app/debug.keystore
 
-          # Generiamo il nuovo con il tipo esplicito PKCS12 (standard moderno)
+          # Generiamo il file stando attenti al percorso relativo
           keytool -genkey -v \
-            -keystore android/app/debug.keystore \
+            -keystore app/debug.keystore \
             -storepass android \
             -alias androiddebugkey \
             -keypass android \
@@ -70,7 +72,7 @@ jobs:
             -storetype PKCS12 \
             -dname "CN=Android Debug,O=Android,C=US" \
             -noprompt
-            
+
           # 6. COMPILAZIONE
           chmod +x gradlew
           ./gradlew clean
