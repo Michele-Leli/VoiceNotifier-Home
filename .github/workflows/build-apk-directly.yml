@@ -54,10 +54,10 @@ jobs:
           # Forza l'esclusione di versioni GMS che richiedono login obbligatorio
           echo "rootProject.ext { excludeAppInvite = true; excludeAds = true }" >> build.gradle
 
-          # 5. GENERAZIONE KEYSTORE (Risolve l'errore di firma)
-          rm -f app/debug.keystore
-          keytool -genkey -v -keystore app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-
+          # 5. GESTIONE KEYSTORE PERSISTENTE
+          # Usiamo una data di validità fissa e parametri costanti
+          keytool -genkey -v -keystore app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" -noprompt
+          
           # 6. COMPILAZIONE
           chmod +x gradlew
           ./gradlew clean
