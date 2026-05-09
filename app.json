@@ -33,7 +33,9 @@
         "WAKE_LOCK",
         "INTERNET",
         "MODIFY_AUDIO_SETTINGS",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "ACCESS_NETWORK_STATE",
+        "ACCESS_WIFI_STATE"
       ],
       "intentFilters": [
         {
