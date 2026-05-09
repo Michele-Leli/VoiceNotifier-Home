@@ -42,30 +42,26 @@ export default function App() {
   useEffect(() => {
     checkPermission();
 
-    // Carica lo stato salvato del pulsante "LEGGI NOTIFICHE"
+    // 1. Carichiamo lo stato del pulsante salvato
     AsyncStorage.getItem('READING_ENABLED').then(val => {
       if (val !== null) setIsReadingEnabled(val === 'true');
     });
 
-    // --- LISTENER NOTIFICHE IN TEMO REALE ---
-    // Questo è il pezzo mancante che attiva la lettura automatica
-    const notificationListener = RNAndroidNotificationListener.getPermissionStatus().then(() => {
-        // Registriamo il callback per ogni notifica ricevuta
-        RNAndroidNotificationListener.subscribe((notification) => {
-            console.log("📩 Notifica ricevuta da:", notification.app);
-            
-            // Inviamo i dati alla WebView per lo storico
-            webViewRef.current?.postMessage(JSON.stringify({
-                type: 'NOTIFICATION_RECEIVED',
-                notification: notification
-            }));
+    // 2. Registriamo l'ascoltatore per le notifiche (IL PEZZO MANCANTE)
+    const subscription = RNAndroidNotificationListener.subscribe((notification) => {
+      console.log("📩 Notifica intercettata:", notification.app);
 
-            // SE il tasto è attivo, LEGGI ad alta voce
-            if (isReadingEnabled) {
-                const testo = `Notifica da ${notification.title || notification.app}: ${notification.text}`;
-                eseguiLettura(testo);
-            }
-        });
+      // Invia alla WebView per lo storico
+      webViewRef.current?.postMessage(JSON.stringify({ 
+        type: 'NOTIFICATION_RECEIVED', 
+        notification: notification 
+      }));
+
+      // LEGGI AD ALTA VOCE solo se il pulsante è ON
+      if (isReadingEnabled) {
+        const testo = `Notifica da ${notification.title || notification.app}: ${notification.text}`;
+        leggiNotifica(testo); // Questa chiama la tua funzione Audio + Speech
+      }
     });
 
     // --- GESTIONE CAST ---
@@ -77,6 +73,7 @@ export default function App() {
     ];
 
     return () => {
+      subscription.remove();
       subs.forEach(s => s.remove());
     };
   }, [isReadingEnabled]); // Ricarica il listener se cambia lo stato del tasto
