@@ -53,22 +53,20 @@
       }
     },
     "plugins": [
-      "expo-av",
-      "expo-speech",
       "@react-native-async-storage/async-storage",
       "react-native-android-notification-listener",
+      [
+        "react-native-google-cast",
+        {
+          "receiverAppId": "CC1AD845"
+        }
+      ],
       [
         "expo-build-properties",
         {
           "android": {
             "kotlinVersion": "2.0.0"
           }
-        }
-      ],
-      [
-        "react-native-google-cast",
-        {
-          "receiverAppId": "CC1AD845"
         }
       ],
       "./plugins/withNotificationListener.cjs"
