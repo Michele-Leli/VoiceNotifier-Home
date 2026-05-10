@@ -60,7 +60,9 @@ export default function App() {
       // LEGGI AD ALTA VOCE solo se il pulsante è ON
       if (isReadingEnabled) {
         const testo = `Notifica da ${notification.title || notification.app}: ${notification.text}`;
-        leggiNotifica(testo); // Questa chiama la tua funzione Audio + Speech
+        // Forza il risveglio dell'audio prima di parlare
+        Audio.setAudioModeAsync({ staysActiveInBackground: true, interruptionModeAndroid: 1 });
+        Speech.speak(testo, { language: 'it-IT' });
       }
     });
 
