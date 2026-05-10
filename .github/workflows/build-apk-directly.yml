@@ -56,6 +56,9 @@ jobs:
           # Forza l'esclusione di versioni GMS che richiedono login obbligatorio
           echo "rootProject.ext { excludeAppInvite = true; excludeAds = true }" >> build.gradle
 
+      - name: Prebuild Native Files
+        run: npx expo prebuild --platform android
+
       - name: 5. GESTIONE KEYSTORE E BUILD
         run: |
           cd android
