@@ -53,6 +53,10 @@
       }
     },
     "plugins": [
+      "expo-av",
+      "expo-speech",
+      "react-native-android-notification-listener",
+      "react-native-google-cast",
       [
         "expo-build-properties",
         {
